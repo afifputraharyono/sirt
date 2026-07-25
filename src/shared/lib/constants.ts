@@ -1,5 +1,5 @@
 export const RT_CONFIG = {
-  nama_rt: "RT 005 RW 003",
+  nama_rt: "RT 001 RW 009",
   nama_desa: "Wonoyoso",
   kecamatan: "Pringapus",
   kabupaten: "Semarang",

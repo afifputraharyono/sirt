@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#059669"/>
+  <text x="256" y="200" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="900" font-size="160" fill="white">SIRT</text>
+  <text x="256" y="320" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="600" font-size="64" fill="rgba(255,255,255,0.9)">WONOYOSO</text>
+  <rect x="96" y="360" width="320" height="4" rx="2" fill="rgba(255,255,255,0.4)"/>
+  <text x="256" y="420" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="500" font-size="40" fill="rgba(255,255,255,0.75)">RT 001 RW 009</text>
+</svg>

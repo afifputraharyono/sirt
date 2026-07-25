@@ -5,6 +5,7 @@ import { Toaster } from "sonner";
 import { queryClient } from "@/shared/lib/query-client";
 import { useAuthStore } from "@/features/auth/store";
 import { router } from "@/app/router";
+import { UpdatePrompt } from "@/shared/components/feedback/UpdatePrompt";
 
 export default function App() {
   const initialize = useAuthStore((s) => s.initialize);
@@ -17,6 +18,7 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
       <Toaster position="top-right" richColors closeButton />
+      <UpdatePrompt />
     </QueryClientProvider>
   );
 }
