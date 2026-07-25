@@ -123,6 +123,48 @@ export async function deleteJimpitan(id: string) {
   if (error) throw error;
 }
 
+export type UpdateJimpitanInput = Partial<
+  Pick<JimpitanHarian, "nominal" | "status" | "catatan">
+>;
+
+export async function updateJimpitan(id: string, input: UpdateJimpitanInput) {
+  const { data, error } = await supabase
+    .from("jimpitan_harian")
+    .update(input)
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as JimpitanHarian;
+}
+
+export async function upsertJimpitanBatch(
+  items: CreateJimpitanInput[]
+) {
+  const { data, error } = await supabase
+    .from("jimpitan_harian")
+    .upsert(items, { onConflict: "rumah_id,tanggal" })
+    .select("*, rumah_kk(no_rumah)");
+  if (error) throw error;
+  return data as JimpitanWithRumah[];
+}
+
+export async function lockJimpitanByDate(tanggal: string, userId: string) {
+  const { error } = await supabase
+    .from("jimpitan_harian")
+    .update({ is_locked: true, dikunci_oleh: userId, dikunci_at: new Date().toISOString() })
+    .eq("tanggal", tanggal);
+  if (error) throw error;
+}
+
+export async function unlockJimpitanByDate(tanggal: string) {
+  const { error } = await supabase
+    .from("jimpitan_harian")
+    .update({ is_locked: false, dikunci_oleh: null, dikunci_at: null })
+    .eq("tanggal", tanggal);
+  if (error) throw error;
+}
+
 // ==================== PENGELUARAN ====================
 
 export async function fetchPengeluaran(bulan: number, tahun: number) {

@@ -24,7 +24,7 @@ export type Agama =
   | "Konghucu"
   | "Lainnya";
 export type TipeKas = "Bapak" | "Ibu";
-export type StatusJimpitan = "Diambil" | "Kosong" | "Tidak Ada Orang";
+export type StatusJimpitan = "Belum" | "Diambil" | "Kosong" | "Tidak Ada Orang";
 export type KategoriPengeluaran =
   | "Operasional"
   | "Keamanan"
@@ -116,6 +116,9 @@ export interface JimpitanHarian {
   status: StatusJimpitan;
   catatan: string | null;
   dicatat_oleh: string;
+  is_locked: boolean;
+  dikunci_oleh: string | null;
+  dikunci_at: string | null;
   created_at: string;
   updated_at: string;
 }

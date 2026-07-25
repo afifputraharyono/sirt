@@ -5,6 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 const PublicLayout = lazy(() => import("@/app/routes/_layout.public"));
 const AdminLayout = lazy(() => import("@/app/routes/_layout.admin"));
+const RondaLayout = lazy(() => import("@/app/routes/_layout.ronda"));
 
 const BerandaPublik = lazy(() => import("@/app/routes/index"));
 const LoginPage = lazy(() => import("@/app/routes/login"));
@@ -20,6 +21,9 @@ const AdminSurat = lazy(() => import("@/app/routes/admin.surat"));
 const AdminPengumuman = lazy(() => import("@/app/routes/admin.pengumuman"));
 const AdminInventaris = lazy(() => import("@/app/routes/admin.inventaris"));
 const AdminPengaturan = lazy(() => import("@/app/routes/admin.pengaturan"));
+
+const RondaJimpitan = lazy(() => import("@/app/routes/ronda.jimpitan"));
+const RondaJadwal = lazy(() => import("@/app/routes/ronda.jadwal"));
 
 function PageLoader() {
   return (
@@ -66,6 +70,20 @@ export const router = createBrowserRouter([
       { path: "pengumuman", element: <S><AdminPengumuman /></S> },
       { path: "inventaris", element: <S><AdminInventaris /></S> },
       { path: "pengaturan", element: <S><AdminPengaturan /></S> },
+    ],
+  },
+  {
+    path: "ronda",
+    element: (
+      <AuthGuard minRole="ronda">
+        <S>
+          <RondaLayout />
+        </S>
+      </AuthGuard>
+    ),
+    children: [
+      { index: true, element: <S><RondaJimpitan /></S> },
+      { path: "jadwal", element: <S><RondaJadwal /></S> },
     ],
   },
   { path: "*", element: <S><NotFound /></S> },

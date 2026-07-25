@@ -84,15 +84,16 @@ CREATE TRIGGER trg_audit_surat_pengantar
 CREATE OR REPLACE FUNCTION fn_handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO profil_pengguna (id, nama_tampilan, role)
+  INSERT INTO public.profil_pengguna (id, nama_tampilan, role)
   VALUES (
     NEW.id,
     COALESCE(NEW.raw_user_meta_data->>'nama_tampilan', split_part(NEW.email, '@', 1)),
-    COALESCE((NEW.raw_user_meta_data->>'role')::role_pengguna, 'warga')
-  );
+    COALESCE(NULLIF(NEW.raw_user_meta_data->>'role', '')::public.role_pengguna, 'warga'::public.role_pengguna)
+  )
+  ON CONFLICT (id) DO NOTHING;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users

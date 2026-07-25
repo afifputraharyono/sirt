@@ -8,7 +8,7 @@ interface AuthState {
   isLoading: boolean;
   initialized: boolean;
 
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<AuthUser>;
   logout: () => Promise<void>;
   initialize: () => Promise<void>;
 }
@@ -79,6 +79,8 @@ export const useAuthStore = create<AuthState>((set) => ({
       };
 
       set({ user: authUser, role: profile.role });
+
+      return authUser;
     } finally {
       set({ isLoading: false });
     }

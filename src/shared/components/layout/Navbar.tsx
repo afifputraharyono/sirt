@@ -3,10 +3,17 @@ import { Menu, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/features/auth/store";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { ThemeToggle } from "./ThemeToggle";
 
 interface NavbarProps {
   onMenuClick?: () => void;
   showMenu?: boolean;
+}
+
+function getDashboardPath(role: string) {
+  if (role === "admin") return "/admin";
+  if (role === "ronda") return "/ronda";
+  return "/";
 }
 
 export function Navbar({ onMenuClick, showMenu }: NavbarProps) {
@@ -26,8 +33,9 @@ export function Navbar({ onMenuClick, showMenu }: NavbarProps) {
       </div>
 
       <div className="flex items-center gap-2">
+        <ThemeToggle />
         {user ? (
-          <Link to={user.role === "admin" ? "/admin" : "/warga"}>
+          <Link to={getDashboardPath(user.role)}>
             <Avatar className="h-8 w-8">
               <AvatarFallback className="bg-primary text-primary-foreground text-xs">
                 {user.nama_tampilan

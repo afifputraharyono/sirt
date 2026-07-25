@@ -10,6 +10,10 @@ import {
   fetchJimpitanSummary,
   createJimpitan,
   deleteJimpitan,
+  updateJimpitan,
+  upsertJimpitanBatch,
+  lockJimpitanByDate,
+  unlockJimpitanByDate,
   fetchPengeluaran,
   createPengeluaran,
   updatePengeluaran,
@@ -18,6 +22,7 @@ import {
   type CreateKasInput,
   type CreateJimpitanInput,
   type CreatePengeluaranInput,
+  type UpdateJimpitanInput,
 } from "./services";
 import { toast } from "sonner";
 
@@ -99,6 +104,55 @@ export function useDeleteJimpitan() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.jimpitan.all });
       toast.success("Data jimpitan berhasil dihapus");
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
+
+export function useUpdateJimpitan() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...input }: UpdateJimpitanInput & { id: string }) =>
+      updateJimpitan(id, input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.jimpitan.all });
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
+
+export function useUpsertJimpitanBatch() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (items: CreateJimpitanInput[]) => upsertJimpitanBatch(items),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.jimpitan.all });
+      toast.success("Jimpitan berhasil digenerate");
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
+
+export function useLockJimpitan() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ tanggal, userId }: { tanggal: string; userId: string }) =>
+      lockJimpitanByDate(tanggal, userId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.jimpitan.all });
+      toast.success("Sesi jimpitan dikunci");
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
+
+export function useUnlockJimpitan() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (tanggal: string) => unlockJimpitanByDate(tanggal),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.jimpitan.all });
+      toast.success("Sesi jimpitan dibuka kembali");
     },
     onError: (err: Error) => toast.error(err.message),
   });

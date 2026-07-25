@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { z } from "zod/v4";
 import { useAuthStore } from "@/features/auth/store";
@@ -19,7 +19,6 @@ type LoginForm = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const location = useLocation();
   const login = useAuthStore((s) => s.login);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,14 +32,20 @@ export default function LoginPage() {
     try {
       setError(null);
       const parsed = loginSchema.parse(data);
-      await login(parsed.email, parsed.password);
-      const from = (location.state as { from?: { pathname: string } })?.from
-        ?.pathname;
-      navigate(from ?? "/admin", { replace: true });
+      const result = await login(parsed.email, parsed.password);
+      let navigateTo = "/admin";
+
+      if (result.role === "warga") {
+        navigateTo = "/warga";
+      } else if (result.role === "admin") {
+        navigateTo = "/admin";
+      } else if (result.role === "ronda") {
+        navigateTo = "/ronda";
+      }
+
+      navigate(navigateTo, { replace: true });
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Login gagal. Coba lagi."
-      );
+      setError(err instanceof Error ? err.message : "Login gagal. Coba lagi.");
     }
   };
 
