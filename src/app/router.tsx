@@ -5,6 +5,8 @@ import AdminLayout from "@/app/routes/_layout.admin";
 
 import BerandaPublik from "@/app/routes/index";
 import LoginPage from "@/app/routes/login";
+import JadwalPublik from "@/app/routes/jadwal";
+import PengumumanPublik from "@/app/routes/pengumuman.public";
 import NotFound from "@/app/routes/not-found";
 
 import AdminDashboard from "@/app/routes/admin.dashboard";
@@ -22,8 +24,8 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <BerandaPublik /> },
       { path: "login", element: <LoginPage /> },
-      { path: "jadwal", element: <BerandaPublik /> },
-      { path: "pengumuman", element: <BerandaPublik /> },
+      { path: "jadwal", element: <JadwalPublik /> },
+      { path: "pengumuman", element: <PengumumanPublik /> },
     ],
   },
   {

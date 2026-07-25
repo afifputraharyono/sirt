@@ -17,7 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Trash2, Wallet } from "lucide-react";
+import { Plus, Trash2, Wallet, Printer } from "lucide-react";
 import {
   useKasByMonth, useCreateKas, useDeleteKas,
   useJimpitanSummary, useCreateJimpitan, useDeleteJimpitan,
@@ -28,6 +28,7 @@ import { useRumahList } from "@/features/warga/hooks";
 import { useAuthStore } from "@/features/auth/store";
 import type { TipeKas, KategoriPengeluaran } from "@/shared/types/database";
 import { formatRupiah, formatTanggalPendek } from "@/shared/utils/format";
+import { cetakLaporanKeuangan } from "@/shared/utils/print";
 import { RT_CONFIG } from "@/shared/lib/constants";
 
 const BULAN_NAMES = ["", "Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
@@ -40,10 +41,47 @@ export default function AdminKeuangan() {
   const [bulan, setBulan] = useState(now.getMonth() + 1);
   const [tahun, setTahun] = useState(now.getFullYear());
   const { data: saldo, isLoading: saldoLoading } = useSaldoKas();
+  const { data: kasBapak } = useKasByMonth("Bapak", bulan, tahun);
+  const { data: kasIbu } = useKasByMonth("Ibu", bulan, tahun);
+  const { data: pengeluaranList } = usePengeluaran(bulan, tahun);
+
+  const handleCetakLaporan = () => {
+    if (!saldo) return;
+    cetakLaporanKeuangan({
+      bulan,
+      tahun,
+      kasBapak: (kasBapak ?? []).map((k) => ({
+        noRumah: k.rumah_kk?.no_rumah ?? "-",
+        jumlah: k.jumlah,
+        status: k.status_bayar,
+      })),
+      kasIbu: (kasIbu ?? []).map((k) => ({
+        noRumah: k.rumah_kk?.no_rumah ?? "-",
+        jumlah: k.jumlah,
+        status: k.status_bayar,
+      })),
+      pengeluaran: (pengeluaranList ?? []).map((p) => ({
+        tanggal: p.tanggal,
+        kategori: p.kategori,
+        keterangan: p.keterangan ?? "",
+        nominal: p.nominal,
+      })),
+      saldo,
+    });
+  };
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Keuangan" description="Kelola kas bulanan, jimpitan, dan pengeluaran" />
+      <PageHeader
+        title="Keuangan"
+        description="Kelola kas bulanan, jimpitan, dan pengeluaran"
+        actions={
+          <Button variant="outline" onClick={handleCetakLaporan} disabled={!saldo}>
+            <Printer className="mr-2 h-4 w-4" />
+            Cetak Laporan
+          </Button>
+        }
+      />
 
       <div className="grid gap-4 sm:grid-cols-3">
         <SaldoCard title="Saldo Kas Bapak" value={saldo?.kas_bapak_masuk} loading={saldoLoading} />

@@ -15,12 +15,15 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Printer } from "lucide-react";
 import { useSuratList, useCreateSurat, useUpdateSuratStatus, useDeleteSurat } from "@/features/surat/hooks";
+import type { SuratWithWarga } from "@/features/surat/services";
 import { useRumahList } from "@/features/warga/hooks";
 import { useAuthStore } from "@/features/auth/store";
 import type { JenisSurat, StatusSurat } from "@/shared/types/database";
 import { formatTanggalPendek } from "@/shared/utils/format";
+import { cetakSuratPengantar } from "@/shared/utils/print";
+import { supabase } from "@/shared/lib/supabase";
 
 const JENIS_SURAT: JenisSurat[] = [
   "Pengantar KTP", "Pengantar KK", "Domisili", "Keterangan Usaha",
@@ -51,6 +54,28 @@ export default function AdminSurat() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const allWarga = rumahList?.flatMap((r) => r.warga_detail.filter((w) => w.is_active)) ?? [];
+
+  const handlePrint = async (surat: SuratWithWarga) => {
+    const { data: warga } = await supabase
+      .from("warga_detail")
+      .select("nik, jenis_kelamin, tempat_lahir, tanggal_lahir, agama, pekerjaan")
+      .eq("id", surat.warga_id)
+      .single();
+
+    cetakSuratPengantar({
+      nomor_surat: surat.nomor_surat,
+      jenis_surat: surat.jenis_surat,
+      nama_lengkap: surat.warga_detail?.nama_lengkap ?? "",
+      nik: warga?.nik,
+      jenis_kelamin: warga?.jenis_kelamin,
+      tempat_lahir: warga?.tempat_lahir,
+      tanggal_lahir: warga?.tanggal_lahir,
+      agama: warga?.agama,
+      pekerjaan: warga?.pekerjaan,
+      keperluan: surat.keperluan,
+      tujuan: surat.tujuan,
+    });
+  };
 
   const handleCreate = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -132,9 +157,14 @@ export default function AdminSurat() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Button variant="ghost" size="icon" onClick={() => setDeleteId(s.id)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="icon" onClick={() => handlePrint(s)} title="Cetak Surat">
+                        <Printer className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => setDeleteId(s.id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
