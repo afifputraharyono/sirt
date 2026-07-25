@@ -195,6 +195,7 @@ export async function fetchSaldoKas() {
     kas_bapak_masuk: number;
     kas_ibu_masuk: number;
     jimpitan_masuk: number;
+    iuran_insidental_masuk: number;
     total_pengeluaran: number;
   };
 }
