@@ -9,6 +9,9 @@ dist/
 .env.staging
 .env.production
 
+# Claude Code
+.claude/
+
 # IDE
 .vscode/
 .idea/
