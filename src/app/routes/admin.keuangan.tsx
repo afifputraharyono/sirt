@@ -1,15 +1,6 @@
 import { useState } from "react";
 import { PageHeader } from "@/shared/components/layout/PageHeader";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog";
+import { BottomDrawer } from "@/shared/components/ui/BottomDrawer";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -17,7 +8,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Trash2, Wallet, Printer } from "lucide-react";
+import { Plus, Trash2, Printer } from "lucide-react";
 import {
   useKasByMonth, useCreateKas, useDeleteKas,
   useJimpitanSummary, useCreateJimpitan, useDeleteJimpitan,
@@ -33,11 +24,19 @@ import { RT_CONFIG } from "@/shared/lib/constants";
 
 const BULAN_NAMES = ["", "Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 const KATEGORI_PENGELUARAN: KategoriPengeluaran[] = ["Operasional", "Keamanan", "Kebersihan", "Sosial", "Pembangunan", "Kegiatan", "Lainnya"];
-const SELECT_CLASS = "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm";
+const SELECT_CLASS = "flex h-10 w-full rounded-[11px] border border-input bg-background px-3 py-2 text-[13.5px]";
+
+const TABS = [
+  { key: "kas-bapak", label: "Kas Bapak" },
+  { key: "kas-ibu", label: "Kas Ibu" },
+  { key: "jimpitan", label: "Jimpitan" },
+  { key: "pengeluaran", label: "Pengeluaran" },
+] as const;
 
 const now = new Date();
 
 export default function AdminKeuangan() {
+  const [tab, setTab] = useState<string>("kas-bapak");
   const [bulan, setBulan] = useState(now.getMonth() + 1);
   const [tahun, setTahun] = useState(now.getFullYear());
   const { data: saldo, isLoading: saldoLoading } = useSaldoKas();
@@ -70,69 +69,105 @@ export default function AdminKeuangan() {
     });
   };
 
+  const saldoCards = [
+    { title: "Kas Bapak", value: saldo?.kas_bapak_masuk ?? 0 },
+    { title: "Kas Ibu", value: saldo?.kas_ibu_masuk ?? 0 },
+    { title: "Jimpitan", value: saldo?.jimpitan_masuk ?? 0 },
+  ];
+
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-4">
       <PageHeader
         title="Keuangan"
         description="Kelola kas bulanan, jimpitan, dan pengeluaran"
         actions={
-          <Button variant="outline" onClick={handleCetakLaporan} disabled={!saldo}>
-            <Printer className="mr-2 h-4 w-4" />
-            Cetak Laporan
-          </Button>
+          <button
+            onClick={handleCetakLaporan}
+            disabled={!saldo}
+            className="flex items-center gap-1.5 rounded-xl border border-border/60 bg-card px-3.5 py-2.5 text-[13px] font-bold transition-transform active:scale-[0.96] disabled:opacity-50"
+          >
+            <Printer className="h-4 w-4" strokeWidth={2.2} />
+            Cetak
+          </button>
         }
       />
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <SaldoCard title="Saldo Kas Bapak" value={saldo?.kas_bapak_masuk} loading={saldoLoading} />
-        <SaldoCard title="Saldo Kas Ibu" value={saldo?.kas_ibu_masuk} loading={saldoLoading} />
-        <SaldoCard title="Total Jimpitan" value={saldo?.jimpitan_masuk} loading={saldoLoading} />
+      {/* Saldo cards */}
+      <div className="-mx-4 overflow-x-auto px-4 scrollbar-none [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:hidden">
+        <div className="flex gap-2.5">
+          {saldoCards.map((c) => (
+            <div key={c.title} className="w-35 shrink-0 rounded-[14px] border border-border/60 bg-card p-3">
+              <div className="text-[11.5px] font-semibold text-muted-foreground">{c.title}</div>
+              <div className="mt-0.5 font-mono text-[15px] font-extrabold text-emerald-600 dark:text-emerald-400">
+                {saldoLoading ? <Skeleton className="h-5 w-20" /> : formatRupiah(c.value)}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
-      <div className="flex gap-2 items-center">
-        <select value={bulan} onChange={(e) => setBulan(Number(e.target.value))} className={SELECT_CLASS + " w-40"}>
+      {/* Month / Year selector */}
+      <div className="flex gap-2">
+        <select
+          value={bulan}
+          onChange={(e) => setBulan(Number(e.target.value))}
+          className="flex-1 rounded-[11px] border border-border/60 bg-card px-3 py-2 text-[13px] font-bold"
+        >
           {BULAN_NAMES.slice(1).map((b, i) => <option key={i + 1} value={i + 1}>{b}</option>)}
         </select>
-        <Input type="number" value={tahun} onChange={(e) => setTahun(Number(e.target.value))} className="w-24" min={2020} max={2030} />
+        <input
+          type="number"
+          value={tahun}
+          onChange={(e) => setTahun(Number(e.target.value))}
+          className="w-20 rounded-[11px] border border-border/60 bg-card px-3 py-2 text-center text-[13px] font-bold"
+          min={2020}
+          max={2030}
+        />
       </div>
 
-      <Tabs defaultValue="kas-bapak">
-        <TabsList>
-          <TabsTrigger value="kas-bapak"><Wallet className="mr-2 h-4 w-4" />Kas Bapak</TabsTrigger>
-          <TabsTrigger value="kas-ibu"><Wallet className="mr-2 h-4 w-4" />Kas Ibu</TabsTrigger>
-          <TabsTrigger value="jimpitan">Jimpitan</TabsTrigger>
-          <TabsTrigger value="pengeluaran">Pengeluaran</TabsTrigger>
-        </TabsList>
+      {/* Pill tabs */}
+      <div className="flex gap-1 rounded-[14px] bg-muted p-1">
+        {TABS.map((t) => (
+          <button
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            className={`flex-1 rounded-[10px] py-2 text-[12px] font-bold transition-all ${
+              tab === t.key
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
 
-        <TabsContent value="kas-bapak">
-          <KasTab tipe="Bapak" bulan={bulan} tahun={tahun} nominal={RT_CONFIG.nominal_kas_bulanan_bapak} />
-        </TabsContent>
-        <TabsContent value="kas-ibu">
-          <KasTab tipe="Ibu" bulan={bulan} tahun={tahun} nominal={RT_CONFIG.nominal_kas_bulanan_ibu} />
-        </TabsContent>
-        <TabsContent value="jimpitan">
-          <JimpitanTab bulan={bulan} tahun={tahun} />
-        </TabsContent>
-        <TabsContent value="pengeluaran">
-          <PengeluaranTab bulan={bulan} tahun={tahun} />
-        </TabsContent>
-      </Tabs>
+      {/* Tab content */}
+      {tab === "kas-bapak" && <KasTab tipe="Bapak" bulan={bulan} tahun={tahun} nominal={RT_CONFIG.nominal_kas_bulanan_bapak} />}
+      {tab === "kas-ibu" && <KasTab tipe="Ibu" bulan={bulan} tahun={tahun} nominal={RT_CONFIG.nominal_kas_bulanan_ibu} />}
+      {tab === "jimpitan" && <JimpitanTab bulan={bulan} tahun={tahun} />}
+      {tab === "pengeluaran" && <PengeluaranTab bulan={bulan} tahun={tahun} />}
     </div>
   );
 }
 
-function SaldoCard({ title, value, loading }: { title: string; value?: number; loading: boolean }) {
+function SectionCard({ children }: { children: React.ReactNode }) {
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold font-mono text-emerald-600">
-          {loading ? <Skeleton className="h-8 w-32" /> : formatRupiah(value ?? 0)}
-        </div>
-      </CardContent>
-    </Card>
+    <div className="rounded-[18px] border border-border/60 bg-card p-4">
+      {children}
+    </div>
+  );
+}
+
+function AddButton({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex items-center gap-1.5 rounded-xl bg-primary px-3.5 py-2 text-[12.5px] font-bold text-primary-foreground transition-transform active:scale-[0.96]"
+    >
+      <Plus className="h-3.5 w-3.5" strokeWidth={2.5} />
+      {label}
+    </button>
   );
 }
 
@@ -143,7 +178,7 @@ function KasTab({ tipe, bulan, tahun, nominal }: { tipe: TipeKas; bulan: number;
   const deleteKas = useDeleteKas();
   const user = useAuthStore((s) => s.user);
 
-  const [dialog, setDialog] = useState(false);
+  const [drawer, setDrawer] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -160,113 +195,98 @@ function KasTab({ tipe, bulan, tahun, nominal }: { tipe: TipeKas; bulan: number;
       metode_bayar: (fd.get("metode_bayar") as string) || null,
       keterangan: (fd.get("keterangan") as string) || null,
       dicatat_oleh: user?.id ?? "",
-    }, { onSuccess: () => setDialog(false) });
+    }, { onSuccess: () => setDrawer(false) });
   };
 
   const paidRumahIds = new Set(kasList?.map((k) => k.rumah_id));
   const unpaidRumah = rumahList?.filter((r) => r.is_active && r.status_hunian !== "Kosong" && !paidRumahIds.has(r.id));
 
   return (
-    <Card>
-      <CardContent className="pt-6 space-y-4">
-        <div className="flex justify-between items-center">
-          <p className="text-sm text-muted-foreground">
-            {BULAN_NAMES[bulan]} {tahun} — {formatRupiah(nominal)}/rumah
-          </p>
-          <Button size="sm" onClick={() => setDialog(true)}><Plus className="mr-2 h-4 w-4" />Catat Pembayaran</Button>
+    <SectionCard>
+      <div className="mb-3 flex items-center justify-between">
+        <div className="text-[12.5px] text-muted-foreground">
+          {BULAN_NAMES[bulan]} {tahun} — <span className="font-bold text-foreground">{formatRupiah(nominal)}/rumah</span>
         </div>
+        <AddButton label="Catat" onClick={() => setDrawer(true)} />
+      </div>
 
-        {isLoading ? (
-          <Skeleton className="h-48 w-full" />
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>No. Rumah</TableHead>
-                <TableHead>Jumlah</TableHead>
-                <TableHead>Tanggal Bayar</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="w-16">Aksi</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {kasList?.map((k) => (
-                <TableRow key={k.id}>
-                  <TableCell className="font-medium">{k.rumah_kk?.no_rumah ?? "-"}</TableCell>
-                  <TableCell className="font-mono">{formatRupiah(k.jumlah)}</TableCell>
-                  <TableCell>{k.tanggal_bayar ? formatTanggalPendek(k.tanggal_bayar) : "-"}</TableCell>
-                  <TableCell><Badge variant="default">{k.status_bayar ? "Lunas" : "Belum"}</Badge></TableCell>
-                  <TableCell>
-                    <Button variant="ghost" size="icon" onClick={() => setDeleteId(k.id)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {unpaidRumah?.map((r) => (
-                <TableRow key={r.id} className="text-muted-foreground">
-                  <TableCell>{r.no_rumah}</TableCell>
-                  <TableCell className="font-mono">{formatRupiah(nominal)}</TableCell>
-                  <TableCell>-</TableCell>
-                  <TableCell><Badge variant="outline">Belum Bayar</Badge></TableCell>
-                  <TableCell />
-                </TableRow>
-              ))}
-              {kasList?.length === 0 && unpaidRumah?.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Belum ada data</TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        )}
+      {isLoading ? <Skeleton className="h-32 w-full rounded-xl" /> : (
+        <div className="flex flex-col gap-2">
+          {kasList?.map((k) => (
+            <div key={k.id} className="flex items-center justify-between rounded-xl bg-muted/40 px-3 py-2.5">
+              <div>
+                <div className="text-[13px] font-bold">Rumah {k.rumah_kk?.no_rumah ?? "-"}</div>
+                <div className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground">
+                  <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">{formatRupiah(k.jumlah)}</span>
+                  <span>·</span>
+                  <span>{k.tanggal_bayar ? formatTanggalPendek(k.tanggal_bayar) : "-"}</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-bold text-primary">Lunas</span>
+                <button onClick={() => setDeleteId(k.id)} className="flex h-7 w-7 items-center justify-center rounded-lg bg-destructive/10 text-destructive transition-transform active:scale-90">
+                  <Trash2 className="h-3.5 w-3.5" strokeWidth={2.2} />
+                </button>
+              </div>
+            </div>
+          ))}
+          {unpaidRumah?.map((r) => (
+            <div key={r.id} className="flex items-center justify-between rounded-xl border border-dashed border-border/60 px-3 py-2.5 text-muted-foreground">
+              <div>
+                <div className="text-[13px] font-bold">Rumah {r.no_rumah}</div>
+                <div className="mt-0.5 font-mono text-[11px]">{formatRupiah(nominal)}</div>
+              </div>
+              <span className="rounded-full border border-border/60 px-2 py-0.5 text-[10px] font-bold">Belum Bayar</span>
+            </div>
+          ))}
+          {kasList?.length === 0 && unpaidRumah?.length === 0 && (
+            <p className="py-6 text-center text-[13px] text-muted-foreground">Belum ada data</p>
+          )}
+        </div>
+      )}
 
-        <Dialog open={dialog} onOpenChange={setDialog}>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Catat Pembayaran Kas {tipe}</DialogTitle></DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label>Rumah *</Label>
-                <select name="rumah_id" required className={SELECT_CLASS}>
-                  <option value="">Pilih rumah...</option>
-                  {unpaidRumah?.map((r) => <option key={r.id} value={r.id}>Rumah {r.no_rumah}</option>)}
-                </select>
-              </div>
-              <div className="space-y-2">
-                <Label>Tanggal Bayar *</Label>
-                <Input name="tanggal_bayar" type="date" required defaultValue={new Date().toISOString().split("T")[0]} />
-              </div>
-              <div className="space-y-2">
-                <Label>Metode Bayar</Label>
-                <Input name="metode_bayar" placeholder="Tunai / Transfer" />
-              </div>
-              <div className="space-y-2">
-                <Label>Keterangan</Label>
-                <Input name="keterangan" />
-              </div>
-              <Button type="submit" className="w-full" disabled={createKas.isPending}>
-                {createKas.isPending ? "Menyimpan..." : "Simpan"}
-              </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+      <BottomDrawer open={drawer} onOpenChange={setDrawer} title={`Catat Pembayaran Kas ${tipe}`}>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
+          <div className="flex flex-col gap-1.5">
+            <Label className="text-[12.5px] font-bold">Rumah *</Label>
+            <select name="rumah_id" required className={SELECT_CLASS}>
+              <option value="">Pilih rumah...</option>
+              {unpaidRumah?.map((r) => <option key={r.id} value={r.id}>Rumah {r.no_rumah}</option>)}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label className="text-[12.5px] font-bold">Tanggal Bayar *</Label>
+            <Input name="tanggal_bayar" type="date" required defaultValue={new Date().toISOString().split("T")[0]} className="rounded-[11px]" />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label className="text-[12.5px] font-bold">Metode Bayar</Label>
+            <Input name="metode_bayar" placeholder="Tunai / Transfer" className="rounded-[11px]" />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label className="text-[12.5px] font-bold">Keterangan</Label>
+            <Input name="keterangan" className="rounded-[11px]" />
+          </div>
+          <button type="submit" disabled={createKas.isPending} className="mt-1 w-full rounded-xl bg-primary py-3 text-[14px] font-bold text-primary-foreground transition-transform active:scale-[0.98] disabled:opacity-60">
+            {createKas.isPending ? "Menyimpan..." : "Simpan"}
+          </button>
+        </form>
+      </BottomDrawer>
 
-        <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Hapus data pembayaran?</AlertDialogTitle>
-              <AlertDialogDescription>Data pembayaran kas akan dihapus permanen.</AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Batal</AlertDialogCancel>
-              <AlertDialogAction onClick={() => deleteId && deleteKas.mutate(deleteId, { onSuccess: () => setDeleteId(null) })} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                Hapus
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </CardContent>
-    </Card>
+      <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus data pembayaran?</AlertDialogTitle>
+            <AlertDialogDescription>Data pembayaran kas akan dihapus permanen.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deleteId && deleteKas.mutate(deleteId, { onSuccess: () => setDeleteId(null) })} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Hapus
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </SectionCard>
   );
 }
 
@@ -277,7 +297,7 @@ function JimpitanTab({ bulan, tahun }: { bulan: number; tahun: number }) {
   const deleteJimpitan = useDeleteJimpitan();
   const user = useAuthStore((s) => s.user);
 
-  const [dialog, setDialog] = useState(false);
+  const [drawer, setDrawer] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const totalJimpitan = jimpitanList?.reduce((sum, j) => sum + j.nominal, 0) ?? 0;
@@ -292,93 +312,84 @@ function JimpitanTab({ bulan, tahun }: { bulan: number; tahun: number }) {
       status: "Diambil",
       catatan: (fd.get("catatan") as string) || null,
       dicatat_oleh: user?.id ?? "",
-    }, { onSuccess: () => setDialog(false) });
+    }, { onSuccess: () => setDrawer(false) });
   };
 
   return (
-    <Card>
-      <CardContent className="pt-6 space-y-4">
-        <div className="flex justify-between items-center">
-          <p className="text-sm text-muted-foreground">
-            Total {BULAN_NAMES[bulan]} {tahun}: <strong className="text-foreground">{formatRupiah(totalJimpitan)}</strong>
-          </p>
-          <Button size="sm" onClick={() => setDialog(true)}><Plus className="mr-2 h-4 w-4" />Catat Jimpitan</Button>
+    <SectionCard>
+      <div className="mb-3 flex items-center justify-between">
+        <div className="text-[12.5px] text-muted-foreground">
+          Total: <span className="font-mono font-bold text-foreground">{formatRupiah(totalJimpitan)}</span>
         </div>
+        <AddButton label="Catat" onClick={() => setDrawer(true)} />
+      </div>
 
-        {isLoading ? <Skeleton className="h-48 w-full" /> : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Tanggal</TableHead>
-                <TableHead>No. Rumah</TableHead>
-                <TableHead>Nominal</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="w-16">Aksi</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {jimpitanList?.length === 0 && (
-                <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Belum ada data</TableCell></TableRow>
-              )}
-              {jimpitanList?.map((j) => (
-                <TableRow key={j.id}>
-                  <TableCell>{formatTanggalPendek(j.tanggal)}</TableCell>
-                  <TableCell className="font-medium">{j.rumah_kk?.no_rumah ?? "-"}</TableCell>
-                  <TableCell className="font-mono">{formatRupiah(j.nominal)}</TableCell>
-                  <TableCell><Badge variant="default">{j.status}</Badge></TableCell>
-                  <TableCell>
-                    <Button variant="ghost" size="icon" onClick={() => setDeleteId(j.id)}><Trash2 className="h-4 w-4" /></Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
+      {isLoading ? <Skeleton className="h-32 w-full rounded-xl" /> : (
+        <div className="flex flex-col gap-2">
+          {jimpitanList?.length === 0 && (
+            <p className="py-6 text-center text-[13px] text-muted-foreground">Belum ada data</p>
+          )}
+          {jimpitanList?.map((j) => (
+            <div key={j.id} className="flex items-center justify-between rounded-xl bg-muted/40 px-3 py-2.5">
+              <div>
+                <div className="text-[13px] font-bold">Rumah {j.rumah_kk?.no_rumah ?? "-"}</div>
+                <div className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground">
+                  <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">{formatRupiah(j.nominal)}</span>
+                  <span>·</span>
+                  <span>{formatTanggalPendek(j.tanggal)}</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-bold text-primary">{j.status}</span>
+                <button onClick={() => setDeleteId(j.id)} className="flex h-7 w-7 items-center justify-center rounded-lg bg-destructive/10 text-destructive transition-transform active:scale-90">
+                  <Trash2 className="h-3.5 w-3.5" strokeWidth={2.2} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
-        <Dialog open={dialog} onOpenChange={setDialog}>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Catat Jimpitan</DialogTitle></DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label>Rumah *</Label>
-                <select name="rumah_id" required className={SELECT_CLASS}>
-                  <option value="">Pilih rumah...</option>
-                  {rumahList?.filter((r) => r.is_active).map((r) => <option key={r.id} value={r.id}>Rumah {r.no_rumah}</option>)}
-                </select>
-              </div>
-              <div className="space-y-2">
-                <Label>Tanggal *</Label>
-                <Input name="tanggal" type="date" required defaultValue={new Date().toISOString().split("T")[0]} />
-              </div>
-              <div className="space-y-2">
-                <Label>Nominal (Rp) *</Label>
-                <Input name="nominal" type="number" required defaultValue={RT_CONFIG.nominal_jimpitan_default} min={0} />
-              </div>
-              <div className="space-y-2">
-                <Label>Catatan</Label>
-                <Input name="catatan" />
-              </div>
-              <Button type="submit" className="w-full" disabled={createJimpitan.isPending}>
-                {createJimpitan.isPending ? "Menyimpan..." : "Simpan"}
-              </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+      <BottomDrawer open={drawer} onOpenChange={setDrawer} title="Catat Jimpitan">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
+          <div className="flex flex-col gap-1.5">
+            <Label className="text-[12.5px] font-bold">Rumah *</Label>
+            <select name="rumah_id" required className={SELECT_CLASS}>
+              <option value="">Pilih rumah...</option>
+              {rumahList?.filter((r) => r.is_active).map((r) => <option key={r.id} value={r.id}>Rumah {r.no_rumah}</option>)}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label className="text-[12.5px] font-bold">Tanggal *</Label>
+            <Input name="tanggal" type="date" required defaultValue={new Date().toISOString().split("T")[0]} className="rounded-[11px]" />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label className="text-[12.5px] font-bold">Nominal (Rp) *</Label>
+            <Input name="nominal" type="number" required defaultValue={RT_CONFIG.nominal_jimpitan_default} min={0} className="rounded-[11px]" />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label className="text-[12.5px] font-bold">Catatan</Label>
+            <Input name="catatan" className="rounded-[11px]" />
+          </div>
+          <button type="submit" disabled={createJimpitan.isPending} className="mt-1 w-full rounded-xl bg-primary py-3 text-[14px] font-bold text-primary-foreground transition-transform active:scale-[0.98] disabled:opacity-60">
+            {createJimpitan.isPending ? "Menyimpan..." : "Simpan"}
+          </button>
+        </form>
+      </BottomDrawer>
 
-        <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Hapus data jimpitan?</AlertDialogTitle>
-              <AlertDialogDescription>Data jimpitan akan dihapus permanen.</AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Batal</AlertDialogCancel>
-              <AlertDialogAction onClick={() => deleteId && deleteJimpitan.mutate(deleteId, { onSuccess: () => setDeleteId(null) })} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Hapus</AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </CardContent>
-    </Card>
+      <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus data jimpitan?</AlertDialogTitle>
+            <AlertDialogDescription>Data jimpitan akan dihapus permanen.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deleteId && deleteJimpitan.mutate(deleteId, { onSuccess: () => setDeleteId(null) })} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Hapus</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </SectionCard>
   );
 }
 
@@ -388,7 +399,7 @@ function PengeluaranTab({ bulan, tahun }: { bulan: number; tahun: number }) {
   const deletePengeluaran = useDeletePengeluaran();
   const user = useAuthStore((s) => s.user);
 
-  const [dialog, setDialog] = useState(false);
+  const [drawer, setDrawer] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const totalPengeluaran = list?.reduce((sum, p) => sum + p.nominal, 0) ?? 0;
@@ -403,91 +414,82 @@ function PengeluaranTab({ bulan, tahun }: { bulan: number; tahun: number }) {
       keterangan: (fd.get("keterangan") as string) || "",
       bukti_url: null,
       dicatat_oleh: user?.id ?? "",
-    }, { onSuccess: () => setDialog(false) });
+    }, { onSuccess: () => setDrawer(false) });
   };
 
   return (
-    <Card>
-      <CardContent className="pt-6 space-y-4">
-        <div className="flex justify-between items-center">
-          <p className="text-sm text-muted-foreground">
-            Total {BULAN_NAMES[bulan]} {tahun}: <strong className="text-foreground">{formatRupiah(totalPengeluaran)}</strong>
-          </p>
-          <Button size="sm" onClick={() => setDialog(true)}><Plus className="mr-2 h-4 w-4" />Catat Pengeluaran</Button>
+    <SectionCard>
+      <div className="mb-3 flex items-center justify-between">
+        <div className="text-[12.5px] text-muted-foreground">
+          Total: <span className="font-mono font-bold text-destructive">{formatRupiah(totalPengeluaran)}</span>
         </div>
+        <AddButton label="Catat" onClick={() => setDrawer(true)} />
+      </div>
 
-        {isLoading ? <Skeleton className="h-48 w-full" /> : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Tanggal</TableHead>
-                <TableHead>Kategori</TableHead>
-                <TableHead>Nominal</TableHead>
-                <TableHead>Keterangan</TableHead>
-                <TableHead className="w-16">Aksi</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {list?.length === 0 && (
-                <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Belum ada data</TableCell></TableRow>
-              )}
-              {list?.map((p) => (
-                <TableRow key={p.id}>
-                  <TableCell>{formatTanggalPendek(p.tanggal)}</TableCell>
-                  <TableCell><Badge variant="secondary">{p.kategori}</Badge></TableCell>
-                  <TableCell className="font-mono text-destructive">{formatRupiah(p.nominal)}</TableCell>
-                  <TableCell className="max-w-xs truncate">{p.keterangan ?? "-"}</TableCell>
-                  <TableCell>
-                    <Button variant="ghost" size="icon" onClick={() => setDeleteId(p.id)}><Trash2 className="h-4 w-4" /></Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
+      {isLoading ? <Skeleton className="h-32 w-full rounded-xl" /> : (
+        <div className="flex flex-col gap-2">
+          {list?.length === 0 && (
+            <p className="py-6 text-center text-[13px] text-muted-foreground">Belum ada data</p>
+          )}
+          {list?.map((p) => (
+            <div key={p.id} className="flex items-center justify-between rounded-xl bg-muted/40 px-3 py-2.5">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-[13px] font-bold">{p.keterangan || p.kategori}</span>
+                  <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold text-muted-foreground">{p.kategori}</span>
+                </div>
+                <div className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground">
+                  <span className="font-mono font-bold text-destructive">{formatRupiah(p.nominal)}</span>
+                  <span>·</span>
+                  <span>{formatTanggalPendek(p.tanggal)}</span>
+                </div>
+              </div>
+              <button onClick={() => setDeleteId(p.id)} className="ml-2 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-destructive/10 text-destructive transition-transform active:scale-90">
+                <Trash2 className="h-3.5 w-3.5" strokeWidth={2.2} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
 
-        <Dialog open={dialog} onOpenChange={setDialog}>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Catat Pengeluaran</DialogTitle></DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label>Tanggal *</Label>
-                <Input name="tanggal" type="date" required defaultValue={new Date().toISOString().split("T")[0]} />
-              </div>
-              <div className="space-y-2">
-                <Label>Kategori *</Label>
-                <select name="kategori" required className={SELECT_CLASS}>
-                  {KATEGORI_PENGELUARAN.map((k) => <option key={k} value={k}>{k}</option>)}
-                </select>
-              </div>
-              <div className="space-y-2">
-                <Label>Nominal (Rp) *</Label>
-                <Input name="nominal" type="number" required min={0} />
-              </div>
-              <div className="space-y-2">
-                <Label>Keterangan</Label>
-                <Input name="keterangan" />
-              </div>
-              <Button type="submit" className="w-full" disabled={createPengeluaran.isPending}>
-                {createPengeluaran.isPending ? "Menyimpan..." : "Simpan"}
-              </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+      <BottomDrawer open={drawer} onOpenChange={setDrawer} title="Catat Pengeluaran">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
+          <div className="flex flex-col gap-1.5">
+            <Label className="text-[12.5px] font-bold">Tanggal *</Label>
+            <Input name="tanggal" type="date" required defaultValue={new Date().toISOString().split("T")[0]} className="rounded-[11px]" />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label className="text-[12.5px] font-bold">Kategori *</Label>
+            <select name="kategori" required className={SELECT_CLASS}>
+              {KATEGORI_PENGELUARAN.map((k) => <option key={k} value={k}>{k}</option>)}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label className="text-[12.5px] font-bold">Nominal (Rp) *</Label>
+            <Input name="nominal" type="number" required min={0} className="rounded-[11px]" />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label className="text-[12.5px] font-bold">Keterangan</Label>
+            <Input name="keterangan" className="rounded-[11px]" />
+          </div>
+          <button type="submit" disabled={createPengeluaran.isPending} className="mt-1 w-full rounded-xl bg-primary py-3 text-[14px] font-bold text-primary-foreground transition-transform active:scale-[0.98] disabled:opacity-60">
+            {createPengeluaran.isPending ? "Menyimpan..." : "Simpan"}
+          </button>
+        </form>
+      </BottomDrawer>
 
-        <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Hapus data pengeluaran?</AlertDialogTitle>
-              <AlertDialogDescription>Data pengeluaran akan dihapus permanen.</AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Batal</AlertDialogCancel>
-              <AlertDialogAction onClick={() => deleteId && deletePengeluaran.mutate(deleteId, { onSuccess: () => setDeleteId(null) })} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Hapus</AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </CardContent>
-    </Card>
+      <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus data pengeluaran?</AlertDialogTitle>
+            <AlertDialogDescription>Data pengeluaran akan dihapus permanen.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deleteId && deletePengeluaran.mutate(deleteId, { onSuccess: () => setDeleteId(null) })} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Hapus</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </SectionCard>
   );
 }

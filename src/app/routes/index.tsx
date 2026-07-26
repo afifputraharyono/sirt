@@ -1,8 +1,14 @@
 import { Link } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Wallet, Users, Shield, Megaphone, Pin, ChevronRight, Home } from "lucide-react";
+import {
+  Wallet,
+  Users,
+  Shield,
+  Megaphone,
+  ChevronRight,
+  ArrowUp,
+  ArrowDown,
+} from "lucide-react";
 import { useSaldoKas } from "@/features/keuangan/hooks";
 import { usePengumumanActive } from "@/features/pengumuman/hooks";
 import { useJadwalRondaPublic, useStatistikRT } from "@/features/public/hooks";
@@ -25,11 +31,13 @@ function getHariIni() {
 
 export default function BerandaPublik() {
   return (
-    <div className="space-y-5">
-      <div className="text-center py-2">
-        <h1 className="text-xl font-bold text-primary">SIRT Wonoyoso</h1>
-        <p className="text-sm text-muted-foreground">
-          Sistem Informasi {RT_CONFIG.nama_rt} {RT_CONFIG.nama_desa}
+    <div className="flex flex-col gap-3.5">
+      <div className="py-1.5 text-center">
+        <h1 className="text-[22px] font-extrabold tracking-[-0.3px]">
+          Sistem Informasi RT
+        </h1>
+        <p className="mt-0.5 text-[13.5px] text-muted-foreground">
+          Wonoyoso &middot; Kelola dan pantau lingkungan RT Anda
         </p>
       </div>
 
@@ -44,7 +52,7 @@ export default function BerandaPublik() {
 function SaldoSection() {
   const { data: saldo, isLoading } = useSaldoKas();
 
-  if (isLoading) return <Skeleton className="h-36 w-full rounded-lg" />;
+  if (isLoading) return <Skeleton className="h-52 w-full rounded-[20px]" />;
 
   const totalMasuk =
     (saldo?.kas_bapak_masuk ?? 0) +
@@ -54,105 +62,146 @@ function SaldoSection() {
   const totalKeluar = saldo?.total_pengeluaran ?? 0;
   const saldoAkhir = totalMasuk - totalKeluar;
 
+  const kasItems = [
+    { label: "Kas Bapak", value: saldo?.kas_bapak_masuk ?? 0 },
+    { label: "Kas Ibu", value: saldo?.kas_ibu_masuk ?? 0 },
+    { label: "Jimpitan", value: saldo?.jimpitan_masuk ?? 0 },
+  ];
+
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center gap-3 pb-2">
-        <Wallet className="h-5 w-5 text-emerald-600" />
-        <CardTitle className="text-base">Keuangan RT</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="flex items-baseline justify-between">
-          <span className="text-sm text-muted-foreground">Saldo Kas</span>
-          <span className="text-lg font-bold text-emerald-700">
-            {formatRupiah(saldoAkhir)}
-          </span>
-        </div>
-        <div className="grid grid-cols-2 gap-2 text-sm">
-          <div className="rounded-md bg-emerald-50 p-2 dark:bg-emerald-950/30">
-            <p className="text-xs text-muted-foreground">Pemasukan</p>
-            <p className="font-semibold text-emerald-700">{formatRupiah(totalMasuk)}</p>
+    <div className="animate-in fade-in slide-in-from-bottom-2 rounded-[20px] bg-linear-to-br from-primary to-primary/80 p-5 text-primary-foreground shadow-lg shadow-primary/30">
+      <div className="mb-3.5 flex items-center gap-2">
+        <Wallet className="h-4.75 w-4.75" strokeWidth={2.2} />
+        <span className="text-[14px] font-bold opacity-95">Keuangan RT</span>
+      </div>
+      <div className="text-[12.5px] font-medium opacity-85">Saldo Kas</div>
+      <div className="mt-0.5 text-[32px] font-extrabold tracking-[-0.5px]">
+        {formatRupiah(saldoAkhir)}
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-2.5">
+        <div className="rounded-[14px] bg-white/15 px-3.5 py-3">
+          <div className="flex items-center gap-1.5 text-[11.5px] font-semibold opacity-85">
+            <ArrowUp className="h-3 w-3" strokeWidth={3} />
+            Pemasukan
           </div>
-          <div className="rounded-md bg-red-50 p-2 dark:bg-red-950/30">
-            <p className="text-xs text-muted-foreground">Pengeluaran</p>
-            <p className="font-semibold text-red-600">{formatRupiah(totalKeluar)}</p>
+          <div className="mt-0.5 text-[17px] font-extrabold">
+            {formatRupiah(totalMasuk)}
           </div>
         </div>
-        <div className="space-y-1 text-xs text-muted-foreground">
-          <div className="flex justify-between">
-            <span>Kas Bapak</span>
-            <span>{formatRupiah(saldo?.kas_bapak_masuk ?? 0)}</span>
+        <div className="rounded-[14px] bg-white/15 px-3.5 py-3">
+          <div className="flex items-center gap-1.5 text-[11.5px] font-semibold opacity-85">
+            <ArrowDown className="h-3 w-3" strokeWidth={3} />
+            Pengeluaran
           </div>
-          <div className="flex justify-between">
-            <span>Kas Ibu</span>
-            <span>{formatRupiah(saldo?.kas_ibu_masuk ?? 0)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span>Jimpitan</span>
-            <span>{formatRupiah(saldo?.jimpitan_masuk ?? 0)}</span>
+          <div className="mt-0.5 text-[17px] font-extrabold">
+            {formatRupiah(totalKeluar)}
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+
+      <div className="mt-4 flex flex-col gap-2 border-t border-white/20 pt-3.5">
+        {kasItems.map((item) => (
+          <div
+            key={item.label}
+            className="flex justify-between text-[13px]"
+          >
+            <span className="font-medium opacity-85">{item.label}</span>
+            <span className="font-bold">{formatRupiah(item.value)}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SectionCard({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`animate-in fade-in slide-in-from-bottom-2 rounded-[20px] border border-border/60 bg-card p-4.5 shadow-sm ${className ?? ""}`}
+    >
+      {children}
+    </div>
+  );
+}
+
+function SectionHeader({
+  icon: Icon,
+  iconBg,
+  iconColor,
+  title,
+  action,
+}: {
+  icon: typeof Megaphone;
+  iconBg: string;
+  iconColor: string;
+  title: string;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="mb-3 flex items-center justify-between">
+      <div className="flex items-center gap-2">
+        <div
+          className={`flex h-7.5 w-7.5 items-center justify-center rounded-[9px] ${iconBg}`}
+        >
+          <Icon className={`h-3.75 w-3.75 ${iconColor}`} strokeWidth={2.2} />
+        </div>
+        <span className="text-[15px] font-bold">{title}</span>
+      </div>
+      {action}
+    </div>
   );
 }
 
 function PengumumanSection() {
   const { data: pengumuman, isLoading } = usePengumumanActive();
 
-  if (isLoading) return <Skeleton className="h-28 w-full rounded-lg" />;
+  if (isLoading) return <Skeleton className="h-32 w-full rounded-[20px]" />;
 
-  const items = pengumuman?.slice(0, 3) ?? [];
+  const item = pengumuman?.[0];
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <div className="flex items-center gap-3">
-          <Megaphone className="h-5 w-5 text-cyan-600" />
-          <CardTitle className="text-base">Pengumuman</CardTitle>
-        </div>
-        {(pengumuman?.length ?? 0) > 3 && (
-          <Link
-            to="/pengumuman"
-            className="flex items-center text-xs text-primary hover:underline"
-          >
-            Semua <ChevronRight className="h-3 w-3" />
-          </Link>
-        )}
-      </CardHeader>
-      <CardContent>
-        {items.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            Tidak ada pengumuman aktif saat ini.
-          </p>
-        ) : (
-          <div className="space-y-3">
-            {items.map((p) => (
-              <div key={p.id} className="space-y-1">
-                <div className="flex items-start gap-2">
-                  {p.is_pinned && (
-                    <Pin className="mt-0.5 h-3 w-3 shrink-0 text-amber-500" />
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium leading-tight">{p.judul}</p>
-                    <p className="line-clamp-2 text-xs text-muted-foreground">
-                      {p.isi}
-                    </p>
-                    <p className="mt-0.5 text-[11px] text-muted-foreground/70">
-                      {formatTanggalPendek(p.tanggal_mulai)}
-                      {p.kategori && (
-                        <Badge variant="outline" className="ml-2 text-[10px] px-1 py-0">
-                          {p.kategori}
-                        </Badge>
-                      )}
-                    </p>
-                  </div>
-                </div>
+    <SectionCard>
+      <SectionHeader
+        icon={Megaphone}
+        iconBg="bg-blue-100 dark:bg-blue-950/40"
+        iconColor="text-blue-600 dark:text-blue-400"
+        title="Pengumuman"
+      />
+      {!item ? (
+        <p className="text-[13px] text-muted-foreground">
+          Tidak ada pengumuman aktif.
+        </p>
+      ) : (
+        <div className="rounded-[14px] bg-muted/50 p-3.5">
+          <div className="flex gap-2">
+            {item.is_pinned && <span className="mt-0.5 text-[14px]">📌</span>}
+            <div className="min-w-0 flex-1">
+              <div className="text-[14px] font-bold">{item.judul}</div>
+              <p className="mt-0.5 line-clamp-2 text-[12.5px] leading-relaxed text-muted-foreground">
+                {item.isi}
+              </p>
+              <div className="mt-2 flex items-center gap-2">
+                <span className="text-[11.5px] font-medium text-muted-foreground">
+                  {formatTanggalPendek(item.tanggal_mulai)}
+                </span>
+                {item.kategori && (
+                  <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-bold text-primary">
+                    {item.kategori}
+                  </span>
+                )}
               </div>
-            ))}
+            </div>
           </div>
-        )}
-      </CardContent>
-    </Card>
+        </div>
+      )}
+    </SectionCard>
   );
 }
 
@@ -161,80 +210,95 @@ function RondaSection() {
   const hariIni = getHariIni();
   const jadwalHariIni = jadwal?.filter((j) => j.hari === hariIni) ?? [];
 
-  if (isLoading) return <Skeleton className="h-28 w-full rounded-lg" />;
+  if (isLoading) return <Skeleton className="h-32 w-full rounded-[20px]" />;
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <div className="flex items-center gap-3">
-          <Shield className="h-5 w-5 text-amber-600" />
-          <CardTitle className="text-base">Ronda Malam Ini</CardTitle>
-        </div>
-        <Link
-          to="/jadwal"
-          className="flex items-center text-xs text-primary hover:underline"
-        >
-          Jadwal Lengkap <ChevronRight className="h-3 w-3" />
-        </Link>
-      </CardHeader>
-      <CardContent>
-        {jadwalHariIni.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            Belum ada jadwal ronda untuk hari {hariIni}.
-          </p>
-        ) : (
-          <div className="space-y-1">
-            <p className="text-xs text-muted-foreground mb-2">
-              {hariIni} &middot; {RT_CONFIG.jam_ronda_mulai} – {RT_CONFIG.jam_ronda_selesai}
-            </p>
+    <SectionCard>
+      <SectionHeader
+        icon={Shield}
+        iconBg="bg-amber-100 dark:bg-amber-950/40"
+        iconColor="text-amber-600 dark:text-amber-400"
+        title="Ronda Malam Ini"
+        action={
+          <Link
+            to="/jadwal"
+            className="flex shrink-0 items-center gap-0.5 text-[12.5px] font-bold text-primary transition-colors hover:text-primary/80"
+          >
+            Lengkap
+            <ChevronRight className="h-2.75 w-2.75" strokeWidth={3} />
+          </Link>
+        }
+      />
+      {jadwalHariIni.length === 0 ? (
+        <p className="text-[13px] text-muted-foreground">
+          Belum ada jadwal ronda untuk hari {hariIni}.
+        </p>
+      ) : (
+        <>
+          <div className="mb-2.5 text-[13px] font-semibold text-muted-foreground">
+            {hariIni} &middot; {RT_CONFIG.jam_ronda_mulai} –{" "}
+            {RT_CONFIG.jam_ronda_selesai}
+          </div>
+          <div className="flex flex-col gap-2.5">
             {jadwalHariIni.map((j) => (
-              <div key={j.id} className="flex items-center gap-2 text-sm">
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-100 text-[10px] font-medium text-amber-700 dark:bg-amber-900/30">
+              <div key={j.id} className="flex items-center gap-2.5">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-100 text-[12.5px] font-extrabold text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
                   {j.urutan}
+                </div>
+                <span className="text-[14px] font-semibold">
+                  {j.nama_anggota}
                 </span>
-                <span>{j.nama_anggota}</span>
               </div>
             ))}
           </div>
-        )}
-      </CardContent>
-    </Card>
+        </>
+      )}
+    </SectionCard>
   );
 }
 
 function StatistikSection() {
   const { data: stats, isLoading } = useStatistikRT();
 
-  if (isLoading) return <Skeleton className="h-20 w-full rounded-lg" />;
+  if (isLoading) return <Skeleton className="h-28 w-full rounded-[20px]" />;
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center gap-3 pb-2">
-        <Users className="h-5 w-5 text-blue-600" />
-        <CardTitle className="text-base">Info Warga</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-3 gap-3 text-center">
-          <div>
-            <div className="flex items-center justify-center gap-1.5 text-muted-foreground">
-              <Home className="h-3.5 w-3.5" />
-            </div>
-            <p className="text-xl font-bold">{stats?.total_rumah ?? 0}</p>
-            <p className="text-[11px] text-muted-foreground">Rumah</p>
+    <SectionCard>
+      <SectionHeader
+        icon={Users}
+        iconBg="bg-violet-100 dark:bg-violet-950/40"
+        iconColor="text-violet-600 dark:text-violet-400"
+        title="Info Warga"
+      />
+      <div className="grid grid-cols-3 gap-2">
+        <div className="rounded-[14px] bg-muted/50 px-1.5 py-3.5 text-center">
+          <div className="text-[22px] font-extrabold tracking-[-0.5px]">
+            {stats?.total_rumah ?? 0}
           </div>
-          <div>
-            <p className="text-xl font-bold text-blue-600">{stats?.total_laki ?? 0}</p>
-            <p className="text-[11px] text-muted-foreground">Laki-laki</p>
-          </div>
-          <div>
-            <p className="text-xl font-bold text-pink-600">{stats?.total_perempuan ?? 0}</p>
-            <p className="text-[11px] text-muted-foreground">Perempuan</p>
+          <div className="mt-0.5 text-[11.5px] font-semibold text-muted-foreground">
+            Rumah
           </div>
         </div>
-        <p className="mt-2 text-center text-xs text-muted-foreground">
-          Total {stats?.total_warga ?? 0} jiwa
-        </p>
-      </CardContent>
-    </Card>
+        <div className="rounded-[14px] bg-muted/50 px-1.5 py-3.5 text-center">
+          <div className="text-[22px] font-extrabold tracking-[-0.5px] text-violet-600 dark:text-violet-400">
+            {stats?.total_laki ?? 0}
+          </div>
+          <div className="mt-0.5 text-[11.5px] font-semibold text-muted-foreground">
+            Laki-laki
+          </div>
+        </div>
+        <div className="rounded-[14px] bg-muted/50 px-1.5 py-3.5 text-center">
+          <div className="text-[22px] font-extrabold tracking-[-0.5px] text-pink-600 dark:text-pink-400">
+            {stats?.total_perempuan ?? 0}
+          </div>
+          <div className="mt-0.5 text-[11.5px] font-semibold text-muted-foreground">
+            Perempuan
+          </div>
+        </div>
+      </div>
+      <div className="mt-3 text-center text-[12.5px] font-semibold text-muted-foreground">
+        Total {stats?.total_warga ?? 0} jiwa
+      </div>
+    </SectionCard>
   );
 }

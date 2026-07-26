@@ -1,13 +1,6 @@
 import { useState } from "react";
 import { PageHeader } from "@/shared/components/layout/PageHeader";
-import { Button } from "@/components/ui/button";
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog";
+import { BottomDrawer } from "@/shared/components/ui/BottomDrawer";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -15,7 +8,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, ChevronDown, ChevronRight, Pencil, Trash2, UserPlus } from "lucide-react";
+import { Plus, ChevronDown, ChevronRight, Pencil, Trash2, UserPlus, Search, Home } from "lucide-react";
 import {
   useRumahList, useCreateRumah, useUpdateRumah, useDeleteRumah,
   useCreateWarga, useUpdateWarga, useDeleteWarga,
@@ -35,7 +28,13 @@ const HUBUNGAN: HubunganKeluarga[] = [
 ];
 const AGAMA: Agama[] = ["Islam", "Kristen", "Katolik", "Hindu", "Buddha", "Konghucu", "Lainnya"];
 const STATUS_KAWIN: StatusPerkawinan[] = ["Belum Kawin", "Kawin", "Cerai Hidup", "Cerai Mati"];
-const SELECT_CLASS = "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm";
+const SELECT_CLASS = "flex h-10 w-full rounded-[11px] border border-input bg-background px-3 py-2 text-[13.5px]";
+
+const HUNIAN_BADGE: Record<string, string> = {
+  Tetap: "bg-primary/15 text-primary",
+  Kontrak: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
+  Kosong: "border border-border/60 text-muted-foreground",
+};
 
 export default function AdminWarga() {
   const { data: rumahList, isLoading } = useRumahList();
@@ -47,8 +46,8 @@ export default function AdminWarga() {
   const deleteWarga = useDeleteWarga();
 
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
-  const [rumahDialog, setRumahDialog] = useState(false);
-  const [wargaDialog, setWargaDialog] = useState(false);
+  const [rumahDrawer, setRumahDrawer] = useState(false);
+  const [wargaDrawer, setWargaDrawer] = useState(false);
   const [editRumah, setEditRumah] = useState<RumahWithWarga | null>(null);
   const [editWarga, setEditWarga] = useState<WargaDetail | null>(null);
   const [wargaRumahId, setWargaRumahId] = useState("");
@@ -87,11 +86,11 @@ export default function AdminWarga() {
     if (editRumah) {
       updateRumah.mutate(
         { id: editRumah.id, ...payload },
-        { onSuccess: () => setRumahDialog(false) }
+        { onSuccess: () => setRumahDrawer(false) }
       );
     } else {
       createRumah.mutate(payload, {
-        onSuccess: () => setRumahDialog(false),
+        onSuccess: () => setRumahDrawer(false),
       });
     }
   };
@@ -117,11 +116,11 @@ export default function AdminWarga() {
     if (editWarga) {
       updateWarga.mutate(
         { id: editWarga.id, ...payload },
-        { onSuccess: () => setWargaDialog(false) }
+        { onSuccess: () => setWargaDrawer(false) }
       );
     } else {
       createWarga.mutate(payload, {
-        onSuccess: () => setWargaDialog(false),
+        onSuccess: () => setWargaDrawer(false),
       });
     }
   };
@@ -140,186 +139,157 @@ export default function AdminWarga() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-4">
       <PageHeader
         title="Data Warga"
         description="Kelola data rumah dan anggota keluarga"
         actions={
-          <Button onClick={() => { setEditRumah(null); setRumahDialog(true); }}>
-            <Plus className="mr-2 h-4 w-4" /> Tambah Rumah
-          </Button>
+          <button
+            onClick={() => { setEditRumah(null); setRumahDrawer(true); }}
+            className="flex items-center gap-1.5 rounded-xl bg-primary px-3.5 py-2.5 text-[13px] font-bold text-primary-foreground transition-transform active:scale-[0.96]"
+          >
+            <Plus className="h-4 w-4" strokeWidth={2.5} />
+            Tambah
+          </button>
         }
       />
 
-      <Input
-        placeholder="Cari no. rumah, no. KK, atau nama warga..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className="max-w-sm"
-      />
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" strokeWidth={2.2} />
+        <input
+          placeholder="Cari no. rumah, KK, atau nama..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full rounded-[11px] border border-border/60 bg-card py-2.75 pl-9 pr-3 text-[13.5px] placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+        />
+      </div>
 
+      {/* Rumah cards */}
       {isLoading ? (
-        <div className="space-y-2">
+        <div className="flex flex-col gap-2.5">
           {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="h-12 w-full" />
+            <Skeleton key={i} className="h-20 w-full rounded-[14px]" />
           ))}
         </div>
+      ) : filteredList?.length === 0 ? (
+        <div className="flex flex-col items-center gap-3 rounded-[18px] border border-dashed border-border/60 py-10 text-center">
+          <Home className="h-10 w-10 text-muted-foreground/50" />
+          <p className="text-[13.5px] font-medium text-muted-foreground">
+            Belum ada data rumah
+          </p>
+        </div>
       ) : (
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-10" />
-                <TableHead>No. Rumah</TableHead>
-                <TableHead>No. KK</TableHead>
-                <TableHead>Kepala Keluarga</TableHead>
-                <TableHead>Anggota</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="w-24">Aksi</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredList?.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                    Belum ada data rumah
-                  </TableCell>
-                </TableRow>
-              )}
-              {filteredList?.map((rumah) => {
-                const kk = rumah.warga_detail.find(
-                  (w) => w.hubungan_keluarga === "Kepala Keluarga" && w.is_active
-                );
-                const isOpen = expandedRows.has(rumah.id);
-                const activeWarga = rumah.warga_detail.filter((w) => w.is_active);
-                return (
-                  <RumahExpandableRow
-                    key={rumah.id}
-                    rumah={rumah}
-                    kk={kk}
-                    isOpen={isOpen}
-                    activeWarga={activeWarga}
-                    onToggle={() => toggleRow(rumah.id)}
-                    onEditRumah={() => { setEditRumah(rumah); setRumahDialog(true); }}
-                    onDeleteRumah={() => setDeleteTarget({ type: "rumah", id: rumah.id })}
-                    onAddWarga={() => { setEditWarga(null); setWargaRumahId(rumah.id); setWargaDialog(true); }}
-                    onEditWarga={(w) => { setEditWarga(w); setWargaRumahId(rumah.id); setWargaDialog(true); }}
-                    onDeleteWarga={(id) => setDeleteTarget({ type: "warga", id })}
-                  />
-                );
-              })}
-            </TableBody>
-          </Table>
+        <div className="flex flex-col gap-2.5">
+          {filteredList?.map((rumah) => {
+            const kk = rumah.warga_detail.find(
+              (w) => w.hubungan_keluarga === "Kepala Keluarga" && w.is_active
+            );
+            const isOpen = expandedRows.has(rumah.id);
+            const activeWarga = rumah.warga_detail.filter((w) => w.is_active);
+            return (
+              <RumahCard
+                key={rumah.id}
+                rumah={rumah}
+                kk={kk}
+                isOpen={isOpen}
+                activeWarga={activeWarga}
+                onToggle={() => toggleRow(rumah.id)}
+                onEditRumah={() => { setEditRumah(rumah); setRumahDrawer(true); }}
+                onDeleteRumah={() => setDeleteTarget({ type: "rumah", id: rumah.id })}
+                onAddWarga={() => { setEditWarga(null); setWargaRumahId(rumah.id); setWargaDrawer(true); }}
+                onEditWarga={(w) => { setEditWarga(w); setWargaRumahId(rumah.id); setWargaDrawer(true); }}
+                onDeleteWarga={(id) => setDeleteTarget({ type: "warga", id })}
+              />
+            );
+          })}
         </div>
       )}
 
-      {/* Dialog Rumah */}
-      <Dialog open={rumahDialog} onOpenChange={setRumahDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{editRumah ? "Edit Rumah" : "Tambah Rumah"}</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleRumahSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="r_no">No. Rumah *</Label>
-              <Input id="r_no" name="no_rumah" required defaultValue={editRumah?.no_rumah} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="r_kk">No. KK</Label>
-              <Input id="r_kk" name="no_kk" maxLength={16} defaultValue={editRumah?.no_kk ?? ""} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="r_alamat">Alamat Lengkap</Label>
-              <Input id="r_alamat" name="alamat_lengkap" defaultValue={editRumah?.alamat_lengkap ?? ""} />
-            </div>
-            <div className="space-y-2">
-              <Label>Status Hunian *</Label>
-              <select name="status_hunian" defaultValue={editRumah?.status_hunian ?? "Tetap"} className={SELECT_CLASS}>
-                {STATUS_HUNIAN.map((s) => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="r_catatan">Catatan</Label>
-              <Input id="r_catatan" name="catatan" defaultValue={editRumah?.catatan ?? ""} />
-            </div>
-            <Button type="submit" className="w-full" disabled={createRumah.isPending || updateRumah.isPending}>
-              {(createRumah.isPending || updateRumah.isPending) ? "Menyimpan..." : "Simpan"}
-            </Button>
-          </form>
-        </DialogContent>
-      </Dialog>
+      {/* Drawer Rumah */}
+      <BottomDrawer open={rumahDrawer} onOpenChange={setRumahDrawer} title={editRumah ? "Edit Rumah" : "Tambah Rumah"}>
+        <form onSubmit={handleRumahSubmit} className="flex flex-col gap-3.5">
+          <FormField label="No. Rumah *">
+            <Input name="no_rumah" required defaultValue={editRumah?.no_rumah} className="rounded-[11px]" />
+          </FormField>
+          <FormField label="No. KK">
+            <Input name="no_kk" maxLength={16} defaultValue={editRumah?.no_kk ?? ""} className="rounded-[11px]" />
+          </FormField>
+          <FormField label="Alamat Lengkap">
+            <Input name="alamat_lengkap" defaultValue={editRumah?.alamat_lengkap ?? ""} className="rounded-[11px]" />
+          </FormField>
+          <FormField label="Status Hunian *">
+            <select name="status_hunian" defaultValue={editRumah?.status_hunian ?? "Tetap"} className={SELECT_CLASS}>
+              {STATUS_HUNIAN.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </FormField>
+          <FormField label="Catatan">
+            <Input name="catatan" defaultValue={editRumah?.catatan ?? ""} className="rounded-[11px]" />
+          </FormField>
+          <PrimaryButton pending={createRumah.isPending || updateRumah.isPending} />
+        </form>
+      </BottomDrawer>
 
-      {/* Dialog Warga */}
-      <Dialog open={wargaDialog} onOpenChange={setWargaDialog}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editWarga ? "Edit Warga" : "Tambah Warga"}</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleWargaSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2 col-span-2">
-                <Label htmlFor="w_nama">Nama Lengkap *</Label>
-                <Input id="w_nama" name="nama_lengkap" required defaultValue={editWarga?.nama_lengkap} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="w_nik">NIK</Label>
-                <Input id="w_nik" name="nik" maxLength={16} defaultValue={editWarga?.nik ?? ""} />
-              </div>
-              <div className="space-y-2">
-                <Label>Jenis Kelamin *</Label>
-                <select name="jenis_kelamin" defaultValue={editWarga?.jenis_kelamin ?? "L"} className={SELECT_CLASS}>
-                  {JENIS_KELAMIN.map((j) => <option key={j} value={j}>{j === "L" ? "Laki-laki" : "Perempuan"}</option>)}
-                </select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="w_tempat">Tempat Lahir</Label>
-                <Input id="w_tempat" name="tempat_lahir" defaultValue={editWarga?.tempat_lahir ?? ""} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="w_tgl">Tanggal Lahir *</Label>
-                <Input id="w_tgl" name="tanggal_lahir" type="date" required defaultValue={editWarga?.tanggal_lahir} />
-              </div>
-              <div className="space-y-2">
-                <Label>Agama *</Label>
-                <select name="agama" defaultValue={editWarga?.agama ?? "Islam"} className={SELECT_CLASS}>
-                  {AGAMA.map((a) => <option key={a} value={a}>{a}</option>)}
-                </select>
-              </div>
-              <div className="space-y-2">
-                <Label>Status Perkawinan *</Label>
-                <select name="status_perkawinan" defaultValue={editWarga?.status_perkawinan ?? "Belum Kawin"} className={SELECT_CLASS}>
-                  {STATUS_KAWIN.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
-              <div className="space-y-2 col-span-2">
-                <Label>Hubungan Keluarga *</Label>
-                <select name="hubungan_keluarga" defaultValue={editWarga?.hubungan_keluarga ?? "Anak"} className={SELECT_CLASS}>
-                  {HUBUNGAN.map((h) => <option key={h} value={h}>{h}</option>)}
-                </select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="w_didik">Pendidikan</Label>
-                <Input id="w_didik" name="pendidikan_terakhir" defaultValue={editWarga?.pendidikan_terakhir ?? ""} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="w_kerja">Pekerjaan</Label>
-                <Input id="w_kerja" name="pekerjaan" defaultValue={editWarga?.pekerjaan ?? ""} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="w_hp">No. HP</Label>
-                <Input id="w_hp" name="no_hp" defaultValue={editWarga?.no_hp ?? ""} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="w_darah">Gol. Darah</Label>
-                <Input id="w_darah" name="golongan_darah" maxLength={3} defaultValue={editWarga?.golongan_darah ?? ""} />
-              </div>
-            </div>
-            <Button type="submit" className="w-full" disabled={createWarga.isPending || updateWarga.isPending}>
-              {(createWarga.isPending || updateWarga.isPending) ? "Menyimpan..." : "Simpan"}
-            </Button>
-          </form>
-        </DialogContent>
-      </Dialog>
+      {/* Drawer Warga */}
+      <BottomDrawer open={wargaDrawer} onOpenChange={setWargaDrawer} title={editWarga ? "Edit Warga" : "Tambah Warga"}>
+        <form onSubmit={handleWargaSubmit} className="flex flex-col gap-3.5">
+          <FormField label="Nama Lengkap *">
+            <Input name="nama_lengkap" required defaultValue={editWarga?.nama_lengkap} className="rounded-[11px]" />
+          </FormField>
+          <div className="grid grid-cols-2 gap-3">
+            <FormField label="NIK">
+              <Input name="nik" maxLength={16} defaultValue={editWarga?.nik ?? ""} className="rounded-[11px]" />
+            </FormField>
+            <FormField label="Jenis Kelamin *">
+              <select name="jenis_kelamin" defaultValue={editWarga?.jenis_kelamin ?? "L"} className={SELECT_CLASS}>
+                {JENIS_KELAMIN.map((j) => <option key={j} value={j}>{j === "L" ? "Laki-laki" : "Perempuan"}</option>)}
+              </select>
+            </FormField>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <FormField label="Tempat Lahir">
+              <Input name="tempat_lahir" defaultValue={editWarga?.tempat_lahir ?? ""} className="rounded-[11px]" />
+            </FormField>
+            <FormField label="Tanggal Lahir *">
+              <Input name="tanggal_lahir" type="date" required defaultValue={editWarga?.tanggal_lahir} className="rounded-[11px]" />
+            </FormField>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <FormField label="Agama *">
+              <select name="agama" defaultValue={editWarga?.agama ?? "Islam"} className={SELECT_CLASS}>
+                {AGAMA.map((a) => <option key={a} value={a}>{a}</option>)}
+              </select>
+            </FormField>
+            <FormField label="Status Perkawinan *">
+              <select name="status_perkawinan" defaultValue={editWarga?.status_perkawinan ?? "Belum Kawin"} className={SELECT_CLASS}>
+                {STATUS_KAWIN.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </FormField>
+          </div>
+          <FormField label="Hubungan Keluarga *">
+            <select name="hubungan_keluarga" defaultValue={editWarga?.hubungan_keluarga ?? "Anak"} className={SELECT_CLASS}>
+              {HUBUNGAN.map((h) => <option key={h} value={h}>{h}</option>)}
+            </select>
+          </FormField>
+          <div className="grid grid-cols-2 gap-3">
+            <FormField label="Pendidikan">
+              <Input name="pendidikan_terakhir" defaultValue={editWarga?.pendidikan_terakhir ?? ""} className="rounded-[11px]" />
+            </FormField>
+            <FormField label="Pekerjaan">
+              <Input name="pekerjaan" defaultValue={editWarga?.pekerjaan ?? ""} className="rounded-[11px]" />
+            </FormField>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <FormField label="No. HP">
+              <Input name="no_hp" defaultValue={editWarga?.no_hp ?? ""} className="rounded-[11px]" />
+            </FormField>
+            <FormField label="Gol. Darah">
+              <Input name="golongan_darah" maxLength={3} defaultValue={editWarga?.golongan_darah ?? ""} className="rounded-[11px]" />
+            </FormField>
+          </div>
+          <PrimaryButton pending={createWarga.isPending || updateWarga.isPending} />
+        </form>
+      </BottomDrawer>
 
       {/* Confirm Delete */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
@@ -344,7 +314,41 @@ export default function AdminWarga() {
   );
 }
 
-function RumahExpandableRow({
+function FormField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <Label className="text-[12.5px] font-bold">{label}</Label>
+      {children}
+    </div>
+  );
+}
+
+function PrimaryButton({ pending }: { pending: boolean }) {
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="mt-1 w-full rounded-xl bg-primary py-3 text-[14px] font-bold text-primary-foreground transition-transform active:scale-[0.98] disabled:opacity-60"
+    >
+      {pending ? "Menyimpan..." : "Simpan"}
+    </button>
+  );
+}
+
+function IconBtn({ icon: Icon, danger, onClick }: { icon: typeof Pencil; danger?: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex h-7 w-7 items-center justify-center rounded-lg transition-transform active:scale-90 ${
+        danger ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground"
+      }`}
+    >
+      <Icon className="h-3.5 w-3.5" strokeWidth={2.2} />
+    </button>
+  );
+}
+
+function RumahCard({
   rumah, kk, isOpen, activeWarga,
   onToggle, onEditRumah, onDeleteRumah, onAddWarga, onEditWarga, onDeleteWarga,
 }: {
@@ -360,59 +364,73 @@ function RumahExpandableRow({
   onDeleteWarga: (id: string) => void;
 }) {
   return (
-    <>
-      <TableRow className="cursor-pointer" onClick={onToggle}>
-        <TableCell>
-          {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-        </TableCell>
-        <TableCell className="font-medium">{rumah.no_rumah}</TableCell>
-        <TableCell className="font-mono text-xs">{rumah.no_kk ?? "-"}</TableCell>
-        <TableCell>{kk?.nama_lengkap ?? "-"}</TableCell>
-        <TableCell>{activeWarga.length} orang</TableCell>
-        <TableCell>
-          <Badge variant={rumah.status_hunian === "Tetap" ? "default" : rumah.status_hunian === "Kontrak" ? "secondary" : "outline"}>
-            {rumah.status_hunian}
-          </Badge>
-        </TableCell>
-        <TableCell>
-          <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-            <Button variant="ghost" size="icon" onClick={onEditRumah}><Pencil className="h-4 w-4" /></Button>
-            <Button variant="ghost" size="icon" onClick={onDeleteRumah}><Trash2 className="h-4 w-4" /></Button>
+    <div className="animate-in fade-in rounded-[14px] border border-border/60 bg-card transition-all">
+      {/* Header row */}
+      <button
+        onClick={onToggle}
+        className="flex w-full items-center gap-2.5 px-3.5 py-3 text-left transition-colors active:bg-muted/50"
+      >
+        {isOpen
+          ? <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={2.5} />
+          : <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={2.5} />
+        }
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span className="text-[14px] font-bold">Rumah {rumah.no_rumah}</span>
+            <span className={`rounded-full px-2 py-0.5 text-[10.5px] font-bold ${HUNIAN_BADGE[rumah.status_hunian] ?? ""}`}>
+              {rumah.status_hunian}
+            </span>
           </div>
-        </TableCell>
-      </TableRow>
+          <div className="mt-0.5 text-[12px] text-muted-foreground">
+            {kk?.nama_lengkap ?? "Belum ada KK"} · {activeWarga.length} anggota
+          </div>
+        </div>
+        <div className="flex shrink-0 gap-1" onClick={(e) => e.stopPropagation()}>
+          <IconBtn icon={Pencil} onClick={onEditRumah} />
+          <IconBtn icon={Trash2} danger onClick={onDeleteRumah} />
+        </div>
+      </button>
+
+      {/* Expanded warga list */}
       {isOpen && (
-        <>
-          {activeWarga.map((w) => (
-            <TableRow key={w.id} className="bg-muted/30">
-              <TableCell />
-              <TableCell />
-              <TableCell className="font-mono text-xs">{w.nik ?? "-"}</TableCell>
-              <TableCell>
-                {w.nama_lengkap}
-                <span className="ml-2 text-xs text-muted-foreground">({w.hubungan_keluarga})</span>
-              </TableCell>
-              <TableCell className="text-sm text-muted-foreground">
-                {w.jenis_kelamin === "L" ? "L" : "P"}, {hitungUmur(w.tanggal_lahir)} thn
-              </TableCell>
-              <TableCell className="text-sm text-muted-foreground">{w.pekerjaan ?? "-"}</TableCell>
-              <TableCell>
-                <div className="flex gap-1">
-                  <Button variant="ghost" size="icon" onClick={() => onEditWarga(w)}><Pencil className="h-4 w-4" /></Button>
-                  <Button variant="ghost" size="icon" onClick={() => onDeleteWarga(w.id)}><Trash2 className="h-4 w-4" /></Button>
+        <div className="border-t border-border/60 px-3.5 py-2.5">
+          {activeWarga.length === 0 ? (
+            <p className="py-2 text-center text-[12.5px] text-muted-foreground">
+              Belum ada anggota
+            </p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {activeWarga.map((w) => (
+                <div
+                  key={w.id}
+                  className="flex items-center gap-2.5 rounded-[10px] bg-muted/40 px-3 py-2"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[13px] font-bold">{w.nama_lengkap}</div>
+                    <div className="mt-0.5 flex flex-wrap gap-x-2 text-[11px] text-muted-foreground">
+                      <span>{w.hubungan_keluarga}</span>
+                      <span>·</span>
+                      <span>{w.jenis_kelamin === "L" ? "L" : "P"}, {hitungUmur(w.tanggal_lahir)} thn</span>
+                      {w.pekerjaan && <><span>·</span><span>{w.pekerjaan}</span></>}
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 gap-1">
+                    <IconBtn icon={Pencil} onClick={() => onEditWarga(w)} />
+                    <IconBtn icon={Trash2} danger onClick={() => onDeleteWarga(w.id)} />
+                  </div>
                 </div>
-              </TableCell>
-            </TableRow>
-          ))}
-          <TableRow className="bg-muted/30">
-            <TableCell colSpan={7}>
-              <Button variant="ghost" size="sm" onClick={onAddWarga}>
-                <UserPlus className="mr-2 h-3 w-3" /> Tambah Anggota
-              </Button>
-            </TableCell>
-          </TableRow>
-        </>
+              ))}
+            </div>
+          )}
+          <button
+            onClick={onAddWarga}
+            className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-[10px] border border-dashed border-border/60 py-2 text-[12.5px] font-bold text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <UserPlus className="h-3.5 w-3.5" strokeWidth={2.2} />
+            Tambah Anggota
+          </button>
+        </div>
       )}
-    </>
+    </div>
   );
 }

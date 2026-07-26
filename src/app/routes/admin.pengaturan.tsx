@@ -1,44 +1,49 @@
 import { useState } from "react";
 import { PageHeader } from "@/shared/components/layout/PageHeader";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { User, Lock, Save } from "lucide-react";
+import { User, Lock, Save, Settings } from "lucide-react";
 import { useAuthStore } from "@/features/auth/store";
 import { supabase } from "@/shared/lib/supabase";
 import { toast } from "sonner";
 
+const INPUT_CLASS = "flex h-10 w-full rounded-[11px] border border-input bg-background px-3 py-2 text-[13.5px] outline-none focus:ring-2 focus:ring-primary/30";
+
 export default function AdminPengaturan() {
+  const [activeTab, setActiveTab] = useState<"profil" | "password">("profil");
+
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-4">
       <PageHeader
         title="Pengaturan"
         description="Kelola profil admin dan keamanan akun"
       />
 
-      <Tabs defaultValue="profil" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="profil" className="gap-2">
-            <User className="h-4 w-4" />
-            Profil
-          </TabsTrigger>
-          <TabsTrigger value="password" className="gap-2">
-            <Lock className="h-4 w-4" />
-            Ubah Password
-          </TabsTrigger>
-        </TabsList>
+      {/* Pill tabs */}
+      <div className="animate-in fade-in slide-in-from-bottom-1 flex rounded-[14px] bg-muted p-1">
+        <button
+          onClick={() => setActiveTab("profil")}
+          className={`flex flex-1 items-center justify-center gap-1.5 rounded-[11px] py-2 text-[13px] font-bold transition-colors ${
+            activeTab === "profil"
+              ? "bg-card text-foreground shadow-sm"
+              : "text-muted-foreground"
+          }`}
+        >
+          <User className="h-3.75 w-3.75" strokeWidth={2.2} />
+          Profil
+        </button>
+        <button
+          onClick={() => setActiveTab("password")}
+          className={`flex flex-1 items-center justify-center gap-1.5 rounded-[11px] py-2 text-[13px] font-bold transition-colors ${
+            activeTab === "password"
+              ? "bg-card text-foreground shadow-sm"
+              : "text-muted-foreground"
+          }`}
+        >
+          <Lock className="h-3.75 w-3.75" strokeWidth={2.2} />
+          Password
+        </button>
+      </div>
 
-        <TabsContent value="profil">
-          <ProfilForm />
-        </TabsContent>
-
-        <TabsContent value="password">
-          <PasswordForm />
-        </TabsContent>
-      </Tabs>
+      {activeTab === "profil" ? <ProfilForm /> : <PasswordForm />}
     </div>
   );
 }
@@ -78,58 +83,60 @@ function ProfilForm() {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg">Informasi Profil</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4 max-w-md">
-          <div className="space-y-2">
-            <Label>Email</Label>
-            <Input value={user?.email ?? ""} disabled className="bg-muted" />
-          </div>
+    <div className="animate-in fade-in slide-in-from-bottom-2 rounded-[18px] border border-border/60 bg-card p-4">
+      <div className="mb-3.5 flex items-center gap-2">
+        <div className="flex h-7.5 w-7.5 items-center justify-center rounded-[10px] bg-blue-100 dark:bg-blue-950/40">
+          <Settings className="h-3.75 w-3.75 text-blue-600 dark:text-blue-400" strokeWidth={2.2} />
+        </div>
+        <span className="text-[14.5px] font-bold">Informasi Profil</span>
+      </div>
 
-          <div className="space-y-2">
-            <Label>Role</Label>
-            <Input
-              value={user?.role === "admin" ? "Administrator" : user?.role ?? ""}
-              disabled
-              className="bg-muted capitalize"
-            />
-          </div>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
+        <FormField label="Email">
+          <input value={user?.email ?? ""} disabled className={INPUT_CLASS + " bg-muted text-muted-foreground"} />
+        </FormField>
 
-          <Separator />
+        <FormField label="Role">
+          <input
+            value={user?.role === "admin" ? "Administrator" : user?.role ?? ""}
+            disabled
+            className={INPUT_CLASS + " bg-muted capitalize text-muted-foreground"}
+          />
+        </FormField>
 
-          <div className="space-y-2">
-            <Label htmlFor="nama">Nama Tampilan *</Label>
-            <Input
-              id="nama"
-              value={nama}
-              onChange={(e) => setNama(e.target.value)}
-              required
-              minLength={2}
-              maxLength={100}
-            />
-          </div>
+        <div className="my-0.5 border-t border-border/60" />
 
-          <div className="space-y-2">
-            <Label htmlFor="no_hp">No. HP</Label>
-            <Input
-              id="no_hp"
-              value={noHp}
-              onChange={(e) => setNoHp(e.target.value)}
-              placeholder="08xxxxxxxxxx"
-              maxLength={15}
-            />
-          </div>
+        <FormField label="Nama Tampilan *">
+          <input
+            value={nama}
+            onChange={(e) => setNama(e.target.value)}
+            required
+            minLength={2}
+            maxLength={100}
+            className={INPUT_CLASS}
+          />
+        </FormField>
 
-          <Button type="submit" disabled={saving}>
-            <Save className="mr-2 h-4 w-4" />
-            {saving ? "Menyimpan..." : "Simpan Profil"}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+        <FormField label="No. HP">
+          <input
+            value={noHp}
+            onChange={(e) => setNoHp(e.target.value)}
+            placeholder="08xxxxxxxxxx"
+            maxLength={15}
+            className={INPUT_CLASS}
+          />
+        </FormField>
+
+        <button
+          type="submit"
+          disabled={saving}
+          className="mt-1 flex w-full items-center justify-center gap-1.5 rounded-[11px] bg-primary py-2.75 text-[13.5px] font-bold text-primary-foreground transition-transform active:scale-[0.97] disabled:opacity-60"
+        >
+          <Save className="h-3.75 w-3.75" strokeWidth={2.2} />
+          {saving ? "Menyimpan..." : "Simpan Profil"}
+        </button>
+      </form>
+    </div>
   );
 }
 
@@ -170,44 +177,57 @@ function PasswordForm() {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg">Ubah Password</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4 max-w-md">
-          <div className="space-y-2">
-            <Label htmlFor="new_password">Password Baru *</Label>
-            <Input
-              id="new_password"
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              required
-              minLength={8}
-              placeholder="Minimal 8 karakter"
-            />
-          </div>
+    <div className="animate-in fade-in slide-in-from-bottom-2 rounded-[18px] border border-border/60 bg-card p-4">
+      <div className="mb-3.5 flex items-center gap-2">
+        <div className="flex h-7.5 w-7.5 items-center justify-center rounded-[10px] bg-amber-100 dark:bg-amber-950/40">
+          <Lock className="h-3.75 w-3.75 text-amber-600 dark:text-amber-400" strokeWidth={2.2} />
+        </div>
+        <span className="text-[14.5px] font-bold">Ubah Password</span>
+      </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="confirm_password">Konfirmasi Password *</Label>
-            <Input
-              id="confirm_password"
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-              minLength={8}
-              placeholder="Ulangi password baru"
-            />
-          </div>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
+        <FormField label="Password Baru *">
+          <input
+            type="password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            required
+            minLength={8}
+            placeholder="Minimal 8 karakter"
+            className={INPUT_CLASS}
+          />
+        </FormField>
 
-          <Button type="submit" disabled={saving}>
-            <Lock className="mr-2 h-4 w-4" />
-            {saving ? "Menyimpan..." : "Ubah Password"}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+        <FormField label="Konfirmasi Password *">
+          <input
+            type="password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            required
+            minLength={8}
+            placeholder="Ulangi password baru"
+            className={INPUT_CLASS}
+          />
+        </FormField>
+
+        <button
+          type="submit"
+          disabled={saving}
+          className="mt-1 flex w-full items-center justify-center gap-1.5 rounded-[11px] bg-primary py-2.75 text-[13.5px] font-bold text-primary-foreground transition-transform active:scale-[0.97] disabled:opacity-60"
+        >
+          <Lock className="h-3.75 w-3.75" strokeWidth={2.2} />
+          {saving ? "Menyimpan..." : "Ubah Password"}
+        </button>
+      </form>
+    </div>
+  );
+}
+
+function FormField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-[13px] font-semibold">{label}</label>
+      {children}
+    </div>
   );
 }

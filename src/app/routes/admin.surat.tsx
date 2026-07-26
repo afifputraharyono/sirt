@@ -1,21 +1,12 @@
 import { useState } from "react";
 import { PageHeader } from "@/shared/components/layout/PageHeader";
-import { Button } from "@/components/ui/button";
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog";
+import { BottomDrawer } from "@/shared/components/ui/BottomDrawer";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Trash2, Printer } from "lucide-react";
+import { Plus, Trash2, Printer, FileText } from "lucide-react";
 import { useSuratList, useCreateSurat, useUpdateSuratStatus, useDeleteSurat } from "@/features/surat/hooks";
 import type { SuratWithWarga } from "@/features/surat/services";
 import { useRumahList } from "@/features/warga/hooks";
@@ -31,13 +22,14 @@ const JENIS_SURAT: JenisSurat[] = [
   "Keterangan Pindah", "Lainnya",
 ];
 const STATUS_SURAT: StatusSurat[] = ["Diajukan", "Diproses", "Selesai", "Ditolak"];
-const SELECT_CLASS = "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm";
+const SELECT_CLASS = "flex h-10 w-full rounded-[11px] border border-input bg-background px-3 py-2 text-[13.5px]";
+const INPUT_CLASS = "flex h-10 w-full rounded-[11px] border border-input bg-background px-3 py-2 text-[13.5px] outline-none focus:ring-2 focus:ring-primary/30";
 
-const statusVariant: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
-  Diajukan: "outline",
-  Diproses: "secondary",
-  Selesai: "default",
-  Ditolak: "destructive",
+const STATUS_COLORS: Record<string, string> = {
+  Diajukan: "border border-border/60 text-muted-foreground",
+  Diproses: "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400",
+  Selesai: "bg-primary/15 text-primary",
+  Ditolak: "bg-destructive/15 text-destructive",
 };
 
 export default function AdminSurat() {
@@ -49,8 +41,8 @@ export default function AdminSurat() {
   const deleteSurat = useDeleteSurat();
   const user = useAuthStore((s) => s.user);
 
-  const [createDialog, setCreateDialog] = useState(false);
-  const [statusDialog, setStatusDialog] = useState<{ id: string; current: string } | null>(null);
+  const [createDrawer, setCreateDrawer] = useState(false);
+  const [statusDrawer, setStatusDrawer] = useState<{ id: string; current: string } | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const allWarga = rumahList?.flatMap((r) => r.warga_detail.filter((w) => w.is_active)) ?? [];
@@ -86,151 +78,182 @@ export default function AdminSurat() {
       warga_id: fd.get("warga_id") as string,
       keperluan: fd.get("keperluan") as string,
       tujuan: (fd.get("tujuan") as string) || null,
-    }, { onSuccess: () => setCreateDialog(false) });
+    }, { onSuccess: () => setCreateDrawer(false) });
   };
 
   const handleStatusUpdate = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!statusDialog) return;
+    if (!statusDrawer) return;
     const fd = new FormData(e.currentTarget);
     updateStatus.mutate({
-      id: statusDialog.id,
+      id: statusDrawer.id,
       status: fd.get("status") as string,
       catatan_admin: (fd.get("catatan_admin") as string) || undefined,
       diproses_oleh: user?.id,
-    }, { onSuccess: () => setStatusDialog(null) });
+    }, { onSuccess: () => setStatusDrawer(null) });
   };
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-4">
       <PageHeader
         title="Surat Pengantar"
         description="Proses pengajuan surat pengantar warga"
         actions={
-          <Button onClick={() => setCreateDialog(true)}>
-            <Plus className="mr-2 h-4 w-4" /> Buat Surat
-          </Button>
+          <button
+            onClick={() => setCreateDrawer(true)}
+            className="flex items-center gap-1.5 rounded-[11px] bg-primary px-3 py-2 text-[13px] font-bold text-primary-foreground transition-transform active:scale-95"
+          >
+            <Plus className="h-3.75 w-3.75" strokeWidth={2.3} />
+            Buat Surat
+          </button>
         }
       />
 
-      <div className="flex gap-2">
-        <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className={SELECT_CLASS + " w-40"}>
-          <option value="">Semua Status</option>
-          {STATUS_SURAT.map((s) => <option key={s} value={s}>{s}</option>)}
-        </select>
+      {/* Status filter pills */}
+      <div className="animate-in fade-in slide-in-from-bottom-1 -mx-4 overflow-x-auto px-4 scrollbar-none">
+        <div className="flex gap-1.5">
+          <button
+            onClick={() => setFilterStatus("")}
+            className={`shrink-0 rounded-full px-3 py-1.5 text-[12px] font-bold transition-colors ${
+              filterStatus === "" ? "bg-primary text-primary-foreground" : "bg-muted/60 text-muted-foreground"
+            }`}
+          >
+            Semua
+          </button>
+          {STATUS_SURAT.map((s) => (
+            <button
+              key={s}
+              onClick={() => setFilterStatus(s)}
+              className={`shrink-0 rounded-full px-3 py-1.5 text-[12px] font-bold transition-colors ${
+                filterStatus === s ? "bg-primary text-primary-foreground" : "bg-muted/60 text-muted-foreground"
+              }`}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {isLoading ? <Skeleton className="h-48 w-full" /> : (
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>No. Surat</TableHead>
-                <TableHead>Jenis</TableHead>
-                <TableHead>Pemohon</TableHead>
-                <TableHead>Keperluan</TableHead>
-                <TableHead>Tanggal</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="w-24">Aksi</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {suratList?.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Belum ada surat</TableCell>
-                </TableRow>
-              )}
-              {suratList?.map((s) => (
-                <TableRow key={s.id}>
-                  <TableCell className="font-mono text-xs">{s.nomor_surat}</TableCell>
-                  <TableCell>{s.jenis_surat}</TableCell>
-                  <TableCell>{s.warga_detail?.nama_lengkap}</TableCell>
-                  <TableCell className="max-w-xs truncate">{s.keperluan}</TableCell>
-                  <TableCell>{formatTanggalPendek(s.tanggal_diajukan)}</TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={statusVariant[s.status] ?? "outline"}
-                      className="cursor-pointer"
-                      onClick={() => setStatusDialog({ id: s.id, current: s.status })}
-                    >
-                      {s.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => handlePrint(s)} title="Cetak Surat">
-                        <Printer className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => setDeleteId(s.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+      {/* Surat list */}
+      {isLoading ? (
+        <div className="flex flex-col gap-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-24 w-full rounded-2xl" />
+          ))}
+        </div>
+      ) : suratList?.length === 0 ? (
+        <div className="animate-in fade-in slide-in-from-bottom-2 rounded-[18px] border border-border/60 bg-card p-8 text-center">
+          <FileText className="mx-auto mb-2 h-8 w-8 text-muted-foreground/40" strokeWidth={1.5} />
+          <p className="text-[13px] text-muted-foreground">Belum ada surat</p>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2.5">
+          {suratList?.map((s, idx) => (
+            <div
+              key={s.id}
+              className="animate-in fade-in slide-in-from-bottom-2 rounded-[18px] border border-border/60 bg-card p-3.5"
+              style={{ animationDelay: `${idx * 40}ms`, animationFillMode: "backwards" }}
+            >
+              {/* Top row */}
+              <div className="mb-2 flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="text-[14px] font-bold">{s.warga_detail?.nama_lengkap}</div>
+                  <div className="mt-0.5 text-[12px] text-muted-foreground">{s.jenis_surat}</div>
+                </div>
+                <button
+                  onClick={() => setStatusDrawer({ id: s.id, current: s.status })}
+                  className={`shrink-0 rounded-full px-2.5 py-0.5 text-[10.5px] font-bold transition-transform active:scale-95 ${STATUS_COLORS[s.status] ?? "border border-border/60 text-muted-foreground"}`}
+                >
+                  {s.status}
+                </button>
+              </div>
+
+              {/* Detail */}
+              <div className="mb-2.5 text-[12.5px] text-muted-foreground">
+                <span className="font-mono text-[11px]">{s.nomor_surat}</span>
+                <span className="mx-1.5">·</span>
+                <span>{s.keperluan}</span>
+              </div>
+
+              {/* Bottom row */}
+              <div className="flex items-center justify-between border-t border-border/40 pt-2">
+                <span className="text-[11px] text-muted-foreground">
+                  {formatTanggalPendek(s.tanggal_diajukan)}
+                </span>
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => handlePrint(s)}
+                    className="flex h-7.5 w-7.5 items-center justify-center rounded-[10px] text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
+                    title="Cetak Surat"
+                  >
+                    <Printer className="h-3.75 w-3.75" strokeWidth={2.2} />
+                  </button>
+                  <button
+                    onClick={() => setDeleteId(s.id)}
+                    className="flex h-7.5 w-7.5 items-center justify-center rounded-[10px] text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                  >
+                    <Trash2 className="h-3.75 w-3.75" strokeWidth={2.2} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
-      {/* Create Dialog */}
-      <Dialog open={createDialog} onOpenChange={setCreateDialog}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Buat Surat Pengantar</DialogTitle></DialogHeader>
-          <form onSubmit={handleCreate} className="space-y-4">
-            <div className="space-y-2">
-              <Label>No. Surat *</Label>
-              <Input name="nomor_surat" required placeholder="001/SP-RT/VII/2026" />
-            </div>
-            <div className="space-y-2">
-              <Label>Jenis Surat *</Label>
-              <select name="jenis_surat" required className={SELECT_CLASS}>
-                {JENIS_SURAT.map((j) => <option key={j} value={j}>{j}</option>)}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <Label>Pemohon *</Label>
-              <select name="warga_id" required className={SELECT_CLASS}>
-                <option value="">Pilih warga...</option>
-                {allWarga.map((w) => <option key={w.id} value={w.id}>{w.nama_lengkap}</option>)}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <Label>Keperluan *</Label>
-              <Input name="keperluan" required />
-            </div>
-            <div className="space-y-2">
-              <Label>Tujuan</Label>
-              <Input name="tujuan" />
-            </div>
-            <Button type="submit" className="w-full" disabled={createSurat.isPending}>
-              {createSurat.isPending ? "Menyimpan..." : "Simpan"}
-            </Button>
-          </form>
-        </DialogContent>
-      </Dialog>
+      {/* Create Drawer */}
+      <BottomDrawer open={createDrawer} onOpenChange={setCreateDrawer} title="Buat Surat Pengantar">
+        <form onSubmit={handleCreate} className="flex flex-col gap-3.5">
+          <FormField label="No. Surat *">
+            <input name="nomor_surat" required placeholder="001/SP-RT/VII/2026" className={INPUT_CLASS} />
+          </FormField>
+          <FormField label="Jenis Surat *">
+            <select name="jenis_surat" required className={SELECT_CLASS}>
+              {JENIS_SURAT.map((j) => <option key={j} value={j}>{j}</option>)}
+            </select>
+          </FormField>
+          <FormField label="Pemohon *">
+            <select name="warga_id" required className={SELECT_CLASS}>
+              <option value="">Pilih warga...</option>
+              {allWarga.map((w) => <option key={w.id} value={w.id}>{w.nama_lengkap}</option>)}
+            </select>
+          </FormField>
+          <FormField label="Keperluan *">
+            <input name="keperluan" required className={INPUT_CLASS} />
+          </FormField>
+          <FormField label="Tujuan">
+            <input name="tujuan" className={INPUT_CLASS} />
+          </FormField>
+          <button
+            type="submit"
+            disabled={createSurat.isPending}
+            className="mt-1 w-full rounded-[11px] bg-primary py-2.75 text-[13.5px] font-bold text-primary-foreground transition-transform active:scale-[0.97] disabled:opacity-60"
+          >
+            {createSurat.isPending ? "Menyimpan..." : "Simpan"}
+          </button>
+        </form>
+      </BottomDrawer>
 
-      {/* Status Update Dialog */}
-      <Dialog open={!!statusDialog} onOpenChange={(open) => !open && setStatusDialog(null)}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Ubah Status Surat</DialogTitle></DialogHeader>
-          <form onSubmit={handleStatusUpdate} className="space-y-4">
-            <div className="space-y-2">
-              <Label>Status *</Label>
-              <select name="status" defaultValue={statusDialog?.current} className={SELECT_CLASS}>
-                {STATUS_SURAT.map((s) => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <Label>Catatan Admin</Label>
-              <Input name="catatan_admin" />
-            </div>
-            <Button type="submit" className="w-full" disabled={updateStatus.isPending}>
-              {updateStatus.isPending ? "Menyimpan..." : "Update Status"}
-            </Button>
-          </form>
-        </DialogContent>
-      </Dialog>
+      {/* Status Update Drawer */}
+      <BottomDrawer open={!!statusDrawer} onOpenChange={(open) => !open && setStatusDrawer(null)} title="Ubah Status Surat">
+        <form onSubmit={handleStatusUpdate} className="flex flex-col gap-3.5">
+          <FormField label="Status *">
+            <select name="status" defaultValue={statusDrawer?.current} className={SELECT_CLASS}>
+              {STATUS_SURAT.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </FormField>
+          <FormField label="Catatan Admin">
+            <input name="catatan_admin" className={INPUT_CLASS} />
+          </FormField>
+          <button
+            type="submit"
+            disabled={updateStatus.isPending}
+            className="mt-1 w-full rounded-[11px] bg-primary py-2.75 text-[13.5px] font-bold text-primary-foreground transition-transform active:scale-[0.97] disabled:opacity-60"
+          >
+            {updateStatus.isPending ? "Menyimpan..." : "Update Status"}
+          </button>
+        </form>
+      </BottomDrawer>
 
       {/* Delete Confirm */}
       <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
@@ -245,6 +268,15 @@ export default function AdminSurat() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+  );
+}
+
+function FormField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-[13px] font-semibold">{label}</label>
+      {children}
     </div>
   );
 }
