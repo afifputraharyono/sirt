@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/shared/lib/query-keys";
+import { useOfflineMutation } from "@/shared/lib/offline-mutation";
 import type { TipeKas } from "@/shared/types/database";
 import {
   fetchKasByMonth,
@@ -42,11 +43,11 @@ export function useKasByMonth(tipe: TipeKas, bulan: number, tahun: number) {
 }
 
 export function useCreateKas() {
-  const qc = useQueryClient();
-  return useMutation({
+  return useOfflineMutation({
+    offlineKey: "kas:create",
     mutationFn: (input: CreateKasInput) => createKas(input),
+    queryKeyToInvalidate: queryKeys.kas.all,
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.kas.all });
       toast.success("Pembayaran kas berhasil dicatat");
     },
     onError: (err: Error) => toast.error(err.message),
@@ -54,12 +55,12 @@ export function useCreateKas() {
 }
 
 export function useUpdateKas() {
-  const qc = useQueryClient();
-  return useMutation({
+  return useOfflineMutation({
+    offlineKey: "kas:update",
     mutationFn: ({ id, ...input }: Partial<CreateKasInput> & { id: string }) =>
       updateKas(id, input),
+    queryKeyToInvalidate: queryKeys.kas.all,
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.kas.all });
       toast.success("Data kas berhasil diperbarui");
     },
     onError: (err: Error) => toast.error(err.message),
@@ -94,11 +95,11 @@ export function useJimpitanSummary(bulan: number, tahun: number) {
 }
 
 export function useCreateJimpitan() {
-  const qc = useQueryClient();
-  return useMutation({
+  return useOfflineMutation({
+    offlineKey: "jimpitan:create",
     mutationFn: (input: CreateJimpitanInput) => createJimpitan(input),
+    queryKeyToInvalidate: queryKeys.jimpitan.all,
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.jimpitan.all });
       toast.success("Jimpitan berhasil dicatat");
     },
     onError: (err: Error) => toast.error(err.message),
@@ -118,23 +119,21 @@ export function useDeleteJimpitan() {
 }
 
 export function useUpdateJimpitan() {
-  const qc = useQueryClient();
-  return useMutation({
+  return useOfflineMutation({
+    offlineKey: "jimpitan:update",
     mutationFn: ({ id, ...input }: UpdateJimpitanInput & { id: string }) =>
       updateJimpitan(id, input),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.jimpitan.all });
-    },
+    queryKeyToInvalidate: queryKeys.jimpitan.all,
     onError: (err: Error) => toast.error(err.message),
   });
 }
 
 export function useUpsertJimpitanBatch() {
-  const qc = useQueryClient();
-  return useMutation({
+  return useOfflineMutation({
+    offlineKey: "jimpitan:upsert-batch",
     mutationFn: (items: CreateJimpitanInput[]) => upsertJimpitanBatch(items),
+    queryKeyToInvalidate: queryKeys.jimpitan.all,
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.jimpitan.all });
       toast.success("Jimpitan berhasil digenerate");
     },
     onError: (err: Error) => toast.error(err.message),
@@ -182,11 +181,11 @@ export function usePengeluaranByRange(from: string, to: string) {
 }
 
 export function useCreatePengeluaran() {
-  const qc = useQueryClient();
-  return useMutation({
+  return useOfflineMutation({
+    offlineKey: "pengeluaran:create",
     mutationFn: (input: CreatePengeluaranInput) => createPengeluaran(input),
+    queryKeyToInvalidate: queryKeys.kas.all,
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.kas.all });
       toast.success("Pengeluaran berhasil dicatat");
     },
     onError: (err: Error) => toast.error(err.message),
@@ -194,15 +193,15 @@ export function useCreatePengeluaran() {
 }
 
 export function useUpdatePengeluaran() {
-  const qc = useQueryClient();
-  return useMutation({
+  return useOfflineMutation({
+    offlineKey: "pengeluaran:update",
     mutationFn: ({
       id,
       ...input
     }: Partial<CreatePengeluaranInput> & { id: string }) =>
       updatePengeluaran(id, input),
+    queryKeyToInvalidate: queryKeys.kas.all,
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.kas.all });
       toast.success("Pengeluaran berhasil diperbarui");
     },
     onError: (err: Error) => toast.error(err.message),

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { registerSW } from "virtual:pwa-register";
+import { toast } from "sonner";
 
 export function useServiceWorker() {
   const [needRefresh, setNeedRefresh] = useState(false);
@@ -10,7 +11,9 @@ export function useServiceWorker() {
       onNeedRefresh() {
         setNeedRefresh(true);
       },
-      onOfflineReady() {},
+      onOfflineReady() {
+        toast.success("Aplikasi siap digunakan offline");
+      },
     });
     setUpdateSW(() => update);
   }, []);

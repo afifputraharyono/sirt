@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { Check, X, Home, Coins, Lock, LockOpen } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useRumahList } from "@/features/warga/hooks";
 import {
   useJimpitanByDate,
@@ -8,9 +9,13 @@ import {
   useLockJimpitan,
   useUnlockJimpitan,
 } from "@/features/keuangan/hooks";
+import type { JimpitanWithRumah } from "@/features/keuangan/services";
 import type { StatusJimpitan } from "@/shared/types/database";
 import { RT_CONFIG } from "@/shared/lib/constants";
+import { queryKeys } from "@/shared/lib/query-keys";
 import { useAuthStore } from "@/features/auth/store";
+import { useOnlineStatus } from "@/shared/hooks/useOnlineStatus";
+import { useOfflineStore } from "@/shared/stores/offline-store";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatRupiah } from "@/shared/utils/format";
@@ -46,6 +51,11 @@ export default function RondaJimpitan() {
   const [showConfirmLock, setShowConfirmLock] = useState(false);
   const userId = useAuthStore((s) => s.user?.id);
   const userRole = useAuthStore((s) => s.role);
+  const isOnline = useOnlineStatus();
+  const qc = useQueryClient();
+  const updateActionVariables = useOfflineStore(
+    (s) => s.updateActionVariables
+  );
 
   const { data: rumahList, isLoading: loadingRumah } = useRumahList();
   const { data: jimpitanList, isLoading: loadingJimpitan } =
@@ -115,13 +125,65 @@ export default function RondaJimpitan() {
       dicatat_oleh: userId,
     }));
     upsertBatch.mutate(items);
+
+    if (!isOnline) {
+      const now = new Date().toISOString();
+      const optimistic: JimpitanWithRumah[] = items.map((item) => ({
+        ...item,
+        id: `optimistic:${item.rumah_id}`,
+        is_locked: false,
+        dikunci_oleh: null,
+        dikunci_at: null,
+        created_at: now,
+        updated_at: now,
+        rumah_kk: {
+          no_rumah:
+            activeRumah.find((r) => r.id === item.rumah_id)?.no_rumah ?? "",
+          mode_jimpitan: "Harian",
+        },
+      }));
+      qc.setQueryData(queryKeys.jimpitan.byDate(tanggal), optimistic);
+    }
   };
 
   const handleStatusTap = (rumahId: string, newStatus: TappableStatus) => {
     if (isLocked) return;
     const existing = jimpitanMap.get(rumahId);
     if (!existing) return;
+
+    const isOptimisticItem = existing.id.startsWith("optimistic:");
+
+    if (!isOnline && isOptimisticItem) {
+      updateActionVariables(
+        "jimpitan:upsert-batch",
+        (variables) =>
+          (variables as Record<string, unknown>[]).map((item) =>
+            (item as { rumah_id: string }).rumah_id === rumahId
+              ? { ...item, status: newStatus }
+              : item
+          )
+      );
+      qc.setQueryData<JimpitanWithRumah[]>(
+        queryKeys.jimpitan.byDate(tanggal),
+        (old) =>
+          old?.map((j) =>
+            j.rumah_id === rumahId ? { ...j, status: newStatus } : j
+          )
+      );
+      return;
+    }
+
     updateJimpitan.mutate({ id: existing.id, status: newStatus });
+
+    if (!isOnline) {
+      qc.setQueryData<JimpitanWithRumah[]>(
+        queryKeys.jimpitan.byDate(tanggal),
+        (old) =>
+          old?.map((j) =>
+            j.id === existing.id ? { ...j, status: newStatus } : j
+          )
+      );
+    }
   };
 
   const handleLock = () => {

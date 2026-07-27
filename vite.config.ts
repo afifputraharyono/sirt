@@ -5,6 +5,9 @@ import { VitePWA } from "vite-plugin-pwa";
 import path from "path";
 
 export default defineConfig({
+  server: {
+    port: 5174,
+  },
   plugins: [
     react(),
     tailwindcss(),
@@ -51,8 +54,8 @@ export default defineConfig({
             options: {
               cacheName: "supabase-api",
               expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 60 * 5,
+                maxEntries: 200,
+                maxAgeSeconds: 60 * 60 * 24,
               },
               cacheableResponse: {
                 statuses: [0, 200],
