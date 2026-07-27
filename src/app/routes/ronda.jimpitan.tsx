@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Check, X, HelpCircle, Home, Coins, Lock, LockOpen } from "lucide-react";
+import { Check, X, Home, Coins, Lock, LockOpen } from "lucide-react";
 import { useRumahList } from "@/features/warga/hooks";
 import {
   useJimpitanByDate,
@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatRupiah } from "@/shared/utils/format";
 
-const TAPPABLE_STATUSES = ["Diambil", "Kosong", "Tidak Ada Orang"] as const;
+const TAPPABLE_STATUSES = ["Diambil", "Kosong"] as const;
 type TappableStatus = (typeof TAPPABLE_STATUSES)[number];
 
 const STATUS_CONFIG: Record<
@@ -33,12 +33,6 @@ const STATUS_CONFIG: Record<
     icon: X,
     color: "text-red-400",
     bg: "bg-red-500/20 border-red-500/40",
-  },
-  "Tidak Ada Orang": {
-    label: "TAO",
-    icon: HelpCircle,
-    color: "text-amber-400",
-    bg: "bg-amber-500/20 border-amber-500/40",
   },
 };
 
@@ -62,7 +56,14 @@ export default function RondaJimpitan() {
   const unlockJimpitan = useUnlockJimpitan();
 
   const activeRumah = useMemo(
-    () => rumahList?.filter((r) => r.is_active) ?? [],
+    () =>
+      rumahList?.filter(
+        (r) =>
+          r.is_active &&
+          r.status_hunian !== "Kosong" &&
+          r.mode_jimpitan === "Harian" &&
+          r.warga_detail.some((w) => w.is_active),
+      ) ?? [],
     [rumahList],
   );
 
@@ -88,7 +89,6 @@ export default function RondaJimpitan() {
   const stats = useMemo(() => {
     let diambil = 0;
     let kosong = 0;
-    let tao = 0;
     let belum = 0;
     let totalNominal = 0;
     jimpitanList?.forEach((j) => {
@@ -96,12 +96,11 @@ export default function RondaJimpitan() {
         diambil++;
         totalNominal += Number(j.nominal);
       } else if (j.status === "Kosong") kosong++;
-      else if (j.status === "Tidak Ada Orang") tao++;
       else belum++;
     });
-    const checked = diambil + kosong + tao;
+    const checked = diambil + kosong;
     const total = jimpitanList?.length ?? 0;
-    return { diambil, kosong, tao, belum, checked, total, totalNominal };
+    return { diambil, kosong, belum, checked, total, totalNominal };
   }, [jimpitanList]);
 
   const handleGenerate = () => {
@@ -111,6 +110,7 @@ export default function RondaJimpitan() {
       tanggal,
       nominal: RT_CONFIG.nominal_jimpitan_default,
       status: "Belum" as StatusJimpitan,
+      tipe: "harian" as const,
       catatan: null,
       dicatat_oleh: userId,
     }));
@@ -200,7 +200,7 @@ export default function RondaJimpitan() {
             </div>
           )}
 
-          <div className="mb-4 grid grid-cols-4 gap-2 text-center">
+          <div className="mb-4 grid grid-cols-3 gap-2 text-center">
             <div className="rounded-xl bg-card p-2">
               <p className="text-lg font-bold text-emerald-500">
                 {stats.diambil}
@@ -210,10 +210,6 @@ export default function RondaJimpitan() {
             <div className="rounded-xl bg-card p-2">
               <p className="text-lg font-bold text-red-500">{stats.kosong}</p>
               <p className="text-[10px] text-muted-foreground">Kosong</p>
-            </div>
-            <div className="rounded-xl bg-card p-2">
-              <p className="text-lg font-bold text-amber-500">{stats.tao}</p>
-              <p className="text-[10px] text-muted-foreground">TAO</p>
             </div>
             <div className="rounded-xl bg-card p-2">
               <p className="text-lg font-bold text-primary">
@@ -258,7 +254,7 @@ export default function RondaJimpitan() {
                     )}
                   </div>
 
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-2 gap-2">
                     {TAPPABLE_STATUSES.map((status) => {
                       const config = STATUS_CONFIG[status];
                       const Icon = config.icon;

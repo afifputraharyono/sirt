@@ -15,14 +15,22 @@ import {
   lockJimpitanByDate,
   unlockJimpitanByDate,
   fetchPengeluaran,
+  fetchPengeluaranByRange,
   createPengeluaran,
   updatePengeluaran,
   deletePengeluaran,
+  fetchGrupPengeluaran,
+  createGrupPengeluaran,
+  updateGrupPengeluaran,
+  deleteGrupPengeluaran,
+  fetchKasByRange,
+  fetchJimpitanByRange,
   fetchSaldoKas,
   type CreateKasInput,
   type CreateJimpitanInput,
   type CreatePengeluaranInput,
   type UpdateJimpitanInput,
+  type CreateGrupInput,
 } from "./services";
 import { toast } from "sonner";
 
@@ -165,6 +173,14 @@ export function usePengeluaran(bulan: number, tahun: number) {
   });
 }
 
+export function usePengeluaranByRange(from: string, to: string) {
+  return useQuery({
+    queryKey: [...queryKeys.kas.all, "pengeluaran-range", from, to],
+    queryFn: () => fetchPengeluaranByRange(from, to),
+    enabled: !!from && !!to,
+  });
+}
+
 export function useCreatePengeluaran() {
   const qc = useQueryClient();
   return useMutation({
@@ -209,5 +225,69 @@ export function useSaldoKas() {
   return useQuery({
     queryKey: queryKeys.kas.saldo(),
     queryFn: fetchSaldoKas,
+  });
+}
+
+// ==================== GRUP PENGELUARAN ====================
+
+export function useGrupPengeluaran() {
+  return useQuery({
+    queryKey: [...queryKeys.kas.all, "grup-pengeluaran"],
+    queryFn: fetchGrupPengeluaran,
+  });
+}
+
+export function useCreateGrupPengeluaran() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateGrupInput) => createGrupPengeluaran(input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.kas.all });
+      toast.success("Grup pengeluaran berhasil dibuat");
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
+
+export function useUpdateGrupPengeluaran() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...input }: { id: string; nama?: string; tanggal?: string; catatan?: string }) =>
+      updateGrupPengeluaran(id, input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.kas.all });
+      toast.success("Grup pengeluaran berhasil diperbarui");
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
+
+export function useDeleteGrupPengeluaran() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteGrupPengeluaran(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.kas.all });
+      toast.success("Grup pengeluaran berhasil dihapus");
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
+
+// ==================== DATE RANGE QUERIES ====================
+
+export function useKasByRange(tipe: TipeKas, from: string, to: string) {
+  return useQuery({
+    queryKey: [...queryKeys.kas.all, "range", tipe, from, to],
+    queryFn: () => fetchKasByRange(tipe, from, to),
+    enabled: !!from && !!to,
+  });
+}
+
+export function useJimpitanByRange(from: string, to: string) {
+  return useQuery({
+    queryKey: [...queryKeys.jimpitan.all, "range", from, to],
+    queryFn: () => fetchJimpitanByRange(from, to),
+    enabled: !!from && !!to,
   });
 }

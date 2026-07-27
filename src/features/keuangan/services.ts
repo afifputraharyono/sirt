@@ -3,6 +3,7 @@ import type {
   KasBulanan,
   JimpitanHarian,
   PengeluaranKas,
+  GrupPengeluaran,
   TipeKas,
 } from "@/shared/types/database";
 
@@ -71,13 +72,13 @@ export async function deleteKas(id: string) {
 // ==================== JIMPITAN ====================
 
 export type JimpitanWithRumah = JimpitanHarian & {
-  rumah_kk: { no_rumah: string };
+  rumah_kk: { no_rumah: string; mode_jimpitan: string };
 };
 
 export async function fetchJimpitanByDate(tanggal: string) {
   const { data, error } = await supabase
     .from("jimpitan_harian")
-    .select("*, rumah_kk(no_rumah)")
+    .select("*, rumah_kk(no_rumah, mode_jimpitan)")
     .eq("tanggal", tanggal)
     .order("created_at", { ascending: false });
   if (error) throw error;
@@ -92,7 +93,7 @@ export async function fetchJimpitanSummary(bulan: number, tahun: number) {
 
   const { data, error } = await supabase
     .from("jimpitan_harian")
-    .select("*, rumah_kk(no_rumah)")
+    .select("*, rumah_kk(no_rumah, mode_jimpitan)")
     .gte("tanggal", startDate)
     .lt("tanggal", endDate)
     .order("tanggal", { ascending: false });
@@ -102,7 +103,7 @@ export async function fetchJimpitanSummary(bulan: number, tahun: number) {
 
 export type CreateJimpitanInput = Pick<
   JimpitanHarian,
-  "rumah_id" | "tanggal" | "nominal" | "status" | "catatan" | "dicatat_oleh"
+  "rumah_id" | "tanggal" | "nominal" | "status" | "tipe" | "catatan" | "dicatat_oleh"
 >;
 
 export async function createJimpitan(input: CreateJimpitanInput) {
@@ -144,7 +145,7 @@ export async function upsertJimpitanBatch(
   const { data, error } = await supabase
     .from("jimpitan_harian")
     .upsert(items, { onConflict: "rumah_id,tanggal" })
-    .select("*, rumah_kk(no_rumah)");
+    .select("*, rumah_kk(no_rumah, mode_jimpitan)");
   if (error) throw error;
   return data as JimpitanWithRumah[];
 }
@@ -167,6 +168,10 @@ export async function unlockJimpitanByDate(tanggal: string) {
 
 // ==================== PENGELUARAN ====================
 
+export type PengeluaranWithGrup = PengeluaranKas & {
+  grup_pengeluaran: { id: string; nama: string } | null;
+};
+
 export async function fetchPengeluaran(bulan: number, tahun: number) {
   const startDate = `${tahun}-${String(bulan).padStart(2, "0")}-01`;
   const endMonth = bulan === 12 ? 1 : bulan + 1;
@@ -175,12 +180,23 @@ export async function fetchPengeluaran(bulan: number, tahun: number) {
 
   const { data, error } = await supabase
     .from("pengeluaran_kas")
-    .select("*")
+    .select("*, grup_pengeluaran(id, nama)")
     .gte("tanggal", startDate)
     .lt("tanggal", endDate)
     .order("tanggal", { ascending: false });
   if (error) throw error;
-  return data as PengeluaranKas[];
+  return data as PengeluaranWithGrup[];
+}
+
+export async function fetchPengeluaranByRange(from: string, to: string) {
+  const { data, error } = await supabase
+    .from("pengeluaran_kas")
+    .select("*, grup_pengeluaran(id, nama)")
+    .gte("tanggal", from)
+    .lte("tanggal", to)
+    .order("tanggal", { ascending: false });
+  if (error) throw error;
+  return data as PengeluaranWithGrup[];
 }
 
 export type CreatePengeluaranInput = Pick<
@@ -190,6 +206,8 @@ export type CreatePengeluaranInput = Pick<
   | "nominal"
   | "keterangan"
   | "bukti_url"
+  | "sumber_dana"
+  | "grup_id"
   | "dicatat_oleh"
 >;
 
@@ -197,10 +215,10 @@ export async function createPengeluaran(input: CreatePengeluaranInput) {
   const { data, error } = await supabase
     .from("pengeluaran_kas")
     .insert(input)
-    .select()
+    .select("*, grup_pengeluaran(id, nama)")
     .single();
   if (error) throw error;
-  return data as PengeluaranKas;
+  return data as PengeluaranWithGrup;
 }
 
 export async function updatePengeluaran(
@@ -211,10 +229,10 @@ export async function updatePengeluaran(
     .from("pengeluaran_kas")
     .update(input)
     .eq("id", id)
-    .select()
+    .select("*, grup_pengeluaran(id, nama)")
     .single();
   if (error) throw error;
-  return data as PengeluaranKas;
+  return data as PengeluaranWithGrup;
 }
 
 export async function deletePengeluaran(id: string) {
@@ -223,6 +241,85 @@ export async function deletePengeluaran(id: string) {
     .delete()
     .eq("id", id);
   if (error) throw error;
+}
+
+// ==================== GRUP PENGELUARAN ====================
+
+export type GrupWithItems = GrupPengeluaran & {
+  pengeluaran_kas: PengeluaranKas[];
+};
+
+export async function fetchGrupPengeluaran() {
+  const { data, error } = await supabase
+    .from("grup_pengeluaran")
+    .select("*, pengeluaran_kas(*)")
+    .order("tanggal", { ascending: false });
+  if (error) throw error;
+  return data as GrupWithItems[];
+}
+
+export type CreateGrupInput = Pick<
+  GrupPengeluaran,
+  "nama" | "tanggal" | "catatan" | "dibuat_oleh"
+>;
+
+export async function createGrupPengeluaran(input: CreateGrupInput) {
+  const { data, error } = await supabase
+    .from("grup_pengeluaran")
+    .insert(input)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as GrupPengeluaran;
+}
+
+export async function updateGrupPengeluaran(
+  id: string,
+  input: Partial<Pick<GrupPengeluaran, "nama" | "tanggal" | "catatan">>
+) {
+  const { data, error } = await supabase
+    .from("grup_pengeluaran")
+    .update(input)
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as GrupPengeluaran;
+}
+
+export async function deleteGrupPengeluaran(id: string) {
+  const { error } = await supabase
+    .from("grup_pengeluaran")
+    .delete()
+    .eq("id", id);
+  if (error) throw error;
+}
+
+// ==================== KAS BY DATE RANGE ====================
+
+export async function fetchKasByRange(tipe: TipeKas, from: string, to: string) {
+  const { data, error } = await supabase
+    .from("kas_bulanan")
+    .select("*, rumah_kk(no_rumah, no_kk)")
+    .eq("tipe_kas", tipe)
+    .eq("status_bayar", true)
+    .gte("tanggal_bayar", from)
+    .lte("tanggal_bayar", to)
+    .order("tanggal_bayar", { ascending: false });
+  if (error) throw error;
+  return data as KasWithRumah[];
+}
+
+export async function fetchJimpitanByRange(from: string, to: string) {
+  const { data, error } = await supabase
+    .from("jimpitan_harian")
+    .select("*, rumah_kk(no_rumah, mode_jimpitan)")
+    .eq("status", "Diambil")
+    .gte("tanggal", from)
+    .lte("tanggal", to)
+    .order("tanggal", { ascending: false });
+  if (error) throw error;
+  return data as JimpitanWithRumah[];
 }
 
 // ==================== SALDO ====================
@@ -239,5 +336,8 @@ export async function fetchSaldoKas() {
     jimpitan_masuk: number;
     iuran_insidental_masuk: number;
     total_pengeluaran: number;
+    pengeluaran_kas_bapak: number;
+    pengeluaran_kas_ibu: number;
+    pengeluaran_jimpitan: number;
   };
 }

@@ -24,7 +24,10 @@ export type Agama =
   | "Konghucu"
   | "Lainnya";
 export type TipeKas = "Bapak" | "Ibu";
-export type StatusJimpitan = "Belum" | "Diambil" | "Kosong" | "Tidak Ada Orang";
+export type StatusJimpitan = "Belum" | "Diambil" | "Kosong";
+export type ModeJimpitan = "Harian" | "Bulanan" | "Bebas";
+export type TipeJimpitan = "harian" | "bulanan";
+export type SumberDana = "Kas Bapak" | "Kas Ibu" | "Jimpitan";
 export type KategoriPengeluaran =
   | "Operasional"
   | "Keamanan"
@@ -62,6 +65,7 @@ export interface RumahKK {
   kelurahan: string;
   kecamatan: string;
   status_hunian: StatusHunian;
+  mode_jimpitan: ModeJimpitan;
   catatan: string | null;
   is_active: boolean;
   created_at: string;
@@ -114,6 +118,7 @@ export interface JimpitanHarian {
   tanggal: string;
   nominal: number;
   status: StatusJimpitan;
+  tipe: TipeJimpitan;
   catatan: string | null;
   dicatat_oleh: string;
   is_locked: boolean;
@@ -130,8 +135,20 @@ export interface PengeluaranKas {
   nominal: number;
   keterangan: string;
   bukti_url: string | null;
+  sumber_dana: SumberDana;
+  grup_id: string | null;
   disetujui_oleh: string | null;
   dicatat_oleh: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GrupPengeluaran {
+  id: string;
+  nama: string;
+  tanggal: string;
+  catatan: string | null;
+  dibuat_oleh: string;
   created_at: string;
   updated_at: string;
 }

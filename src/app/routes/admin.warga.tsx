@@ -16,11 +16,12 @@ import {
 import type { RumahWithWarga } from "@/features/warga/services";
 import type {
   WargaDetail, StatusHunian, JenisKelamin, HubunganKeluarga,
-  Agama, StatusPerkawinan,
+  Agama, StatusPerkawinan, ModeJimpitan,
 } from "@/shared/types/database";
 import { hitungUmur } from "@/shared/utils/format";
 
 const STATUS_HUNIAN: StatusHunian[] = ["Tetap", "Kontrak", "Kosong"];
+const MODE_JIMPITAN: ModeJimpitan[] = ["Harian", "Bulanan", "Bebas"];
 const JENIS_KELAMIN: JenisKelamin[] = ["L", "P"];
 const HUBUNGAN: HubunganKeluarga[] = [
   "Kepala Keluarga", "Istri", "Anak", "Orang Tua",
@@ -81,6 +82,7 @@ export default function AdminWarga() {
       no_kk: (fd.get("no_kk") as string) || null,
       alamat_lengkap: (fd.get("alamat_lengkap") as string) || null,
       status_hunian: fd.get("status_hunian") as StatusHunian,
+      mode_jimpitan: fd.get("mode_jimpitan") as ModeJimpitan,
       catatan: (fd.get("catatan") as string) || null,
     };
     if (editRumah) {
@@ -221,6 +223,11 @@ export default function AdminWarga() {
           <FormField label="Status Hunian *">
             <select name="status_hunian" defaultValue={editRumah?.status_hunian ?? "Tetap"} className={SELECT_CLASS}>
               {STATUS_HUNIAN.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </FormField>
+          <FormField label="Mode Jimpitan *">
+            <select name="mode_jimpitan" defaultValue={editRumah?.mode_jimpitan ?? "Harian"} className={SELECT_CLASS}>
+              {MODE_JIMPITAN.map((m) => <option key={m} value={m}>{m}</option>)}
             </select>
           </FormField>
           <FormField label="Catatan">
