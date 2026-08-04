@@ -153,16 +153,39 @@ export default function RondaJimpitan() {
 
     const isOptimisticItem = existing.id.startsWith("optimistic:");
 
-    if (!isOnline && isOptimisticItem) {
-      updateActionVariables(
-        "jimpitan:upsert-batch",
-        (variables) =>
-          (variables as Record<string, unknown>[]).map((item) =>
-            (item as { rumah_id: string }).rumah_id === rumahId
-              ? { ...item, status: newStatus }
-              : item
-          )
-      );
+    if (isOptimisticItem) {
+      const pendingExists = useOfflineStore
+        .getState()
+        .pendingActions.some(
+          (a) =>
+            a.mutationKey === "jimpitan:upsert-batch" &&
+            a.status === "pending"
+        );
+
+      if (!isOnline && pendingExists) {
+        updateActionVariables(
+          "jimpitan:upsert-batch",
+          (variables) =>
+            (variables as Record<string, unknown>[]).map((item) =>
+              (item as { rumah_id: string }).rumah_id === rumahId
+                ? { ...item, status: newStatus }
+                : item
+            )
+        );
+      } else {
+        upsertBatch.mutate([
+          {
+            rumah_id: rumahId,
+            tanggal,
+            nominal: existing.nominal,
+            status: newStatus,
+            tipe: "harian" as const,
+            catatan: null,
+            dicatat_oleh: userId!,
+          },
+        ]);
+      }
+
       qc.setQueryData<JimpitanWithRumah[]>(
         queryKeys.jimpitan.byDate(tanggal),
         (old) =>
