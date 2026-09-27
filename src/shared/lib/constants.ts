@@ -6,7 +6,7 @@ export const RT_CONFIG = {
   provinsi: "Jawa Tengah",
   nama_ketua_rt: "",
   nominal_kas_bulanan_bapak: 10_000,
-  nominal_kas_bulanan_ibu: 5_000,
+  nominal_kas_bulanan_ibu: 20_000,
   nominal_jimpitan_default: 500,
   jam_ronda_mulai: "22:00",
   jam_ronda_selesai: "05:00",
