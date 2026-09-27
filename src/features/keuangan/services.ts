@@ -333,11 +333,13 @@ export async function fetchSaldoKas() {
   return data as {
     kas_bapak_masuk: number;
     kas_ibu_masuk: number;
+    arisan_masuk: number;
     jimpitan_masuk: number;
     iuran_insidental_masuk: number;
     total_pengeluaran: number;
     pengeluaran_kas_bapak: number;
     pengeluaran_kas_ibu: number;
     pengeluaran_jimpitan: number;
+    pengeluaran_arisan: number;
   };
 }

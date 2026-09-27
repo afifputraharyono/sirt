@@ -12,7 +12,9 @@ export async function fetchRumahList() {
     .eq("is_active", true)
     .order("no_rumah");
   if (error) throw error;
-  return data as RumahWithWarga[];
+  return (data as RumahWithWarga[]).sort((a, b) =>
+    a.no_rumah.localeCompare(b.no_rumah, undefined, { numeric: true })
+  );
 }
 
 export async function fetchRumahDetail(id: string) {

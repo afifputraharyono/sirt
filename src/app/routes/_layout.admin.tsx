@@ -14,20 +14,36 @@ import {
   X,
   Sun,
   Moon,
+  ChevronRight,
 } from "lucide-react";
 import { useAuthStore } from "@/features/auth/store";
 import { useTheme } from "@/shared/hooks/useTheme";
 
-const NAV_ITEMS = [
+type NavItem = {
+  label: string;
+  icon: typeof Home;
+} & (
+  | { href: string; children?: never }
+  | { href?: never; children: { label: string; href: string }[] }
+);
+
+const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", href: "/admin", icon: Home },
   { label: "Warga", href: "/admin/warga", icon: Users },
-  { label: "Keuangan", href: "/admin/keuangan", icon: Wallet },
+  {
+    label: "Keuangan",
+    icon: Wallet,
+    children: [
+      { label: "Kas Bapak & Jimpitan", href: "/admin/keuangan/bapak" },
+      { label: "Kas Ibu & Arisan", href: "/admin/keuangan/ibu" },
+    ],
+  },
   { label: "Ronda", href: "/admin/ronda", icon: Shield },
   { label: "Surat", href: "/admin/surat", icon: FileText },
   { label: "Pengumuman", href: "/admin/pengumuman", icon: Megaphone },
   { label: "Inventaris", href: "/admin/inventaris", icon: Package },
   { label: "Pengaturan", href: "/admin/pengaturan", icon: Settings },
-] as const;
+];
 
 export default function AdminLayout() {
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -35,6 +51,22 @@ export default function AdminLayout() {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const { theme, setTheme } = useTheme();
+  const [expanded, setExpanded] = useState<Set<string>>(() => {
+    const initial = new Set<string>();
+    NAV_ITEMS.forEach((item) => {
+      if (item.children?.some((c) => pathname.startsWith(c.href))) {
+        initial.add(item.label);
+      }
+    });
+    return initial;
+  });
+
+  const toggleExpand = (label: string) => {
+    const next = new Set(expanded);
+    if (next.has(label)) next.delete(label);
+    else next.add(label);
+    setExpanded(next);
+  };
 
   const initials = user?.nama_tampilan
     .split(" ")
@@ -133,15 +165,68 @@ export default function AdminLayout() {
         {/* Nav items */}
         <nav className="flex-1 overflow-y-auto px-3 py-2.5">
           <div className="flex flex-col gap-1">
-            {NAV_ITEMS.map(({ label, href, icon: Icon }) => {
+            {NAV_ITEMS.map((item) => {
+              const Icon = item.icon;
+              if (item.children) {
+                const isParentActive = item.children.some((c) =>
+                  pathname.startsWith(c.href)
+                );
+                const isOpen = expanded.has(item.label);
+                return (
+                  <div key={item.label}>
+                    <button
+                      onClick={() => toggleExpand(item.label)}
+                      className={`flex w-full items-center gap-2.5 rounded-[11px] px-3 py-2.75 text-[14px] font-bold transition-colors ${
+                        isParentActive
+                          ? "text-primary"
+                          : "text-foreground hover:bg-muted"
+                      }`}
+                    >
+                      <Icon className="h-4.75 w-4.75" strokeWidth={2.2} />
+                      <span className="flex-1 text-left">{item.label}</span>
+                      <ChevronRight
+                        className={`h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 ${isOpen ? "rotate-90" : ""}`}
+                        strokeWidth={2.5}
+                      />
+                    </button>
+                    <div
+                      className="grid transition-[grid-template-rows] duration-200 ease-out"
+                      style={{ gridTemplateRows: isOpen ? "1fr" : "0fr" }}
+                    >
+                      <div className="overflow-hidden">
+                        <div className="ml-5 mt-0.5 flex flex-col gap-0.5 border-l border-border/50 pl-3 pb-0.5">
+                          {item.children.map((child) => {
+                            const isChildActive = pathname === child.href;
+                            return (
+                              <Link
+                                key={child.href}
+                                to={child.href}
+                                onClick={() => setDrawerOpen(false)}
+                                className={`rounded-[9px] px-3 py-2 text-[13px] font-bold transition-colors ${
+                                  isChildActive
+                                    ? "bg-primary/10 text-primary"
+                                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                                }`}
+                              >
+                                {child.label}
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
               const isActive =
-                pathname === href ||
-                (href !== "/admin" && pathname.startsWith(href));
+                pathname === item.href ||
+                (item.href !== "/admin" && pathname.startsWith(item.href));
               return (
                 <Link
-                  key={href}
-                  to={href}
-                  onClick={() => setDrawerOpen(false)}
+                  key={item.href}
+                  to={item.href}
+                  onClick={() => { setExpanded(new Set()); setDrawerOpen(false); }}
                   className={`flex items-center gap-2.5 rounded-[11px] px-3 py-2.75 text-[14px] font-bold transition-colors ${
                     isActive
                       ? "bg-primary/10 text-primary"
@@ -149,7 +234,7 @@ export default function AdminLayout() {
                   }`}
                 >
                   <Icon className="h-4.75 w-4.75" strokeWidth={2.2} />
-                  {label}
+                  {item.label}
                 </Link>
               );
             })}

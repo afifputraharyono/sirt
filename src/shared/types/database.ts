@@ -23,11 +23,11 @@ export type Agama =
   | "Buddha"
   | "Konghucu"
   | "Lainnya";
-export type TipeKas = "Bapak" | "Ibu";
+export type TipeKas = "Bapak" | "Ibu" | "Arisan";
 export type StatusJimpitan = "Belum" | "Diambil" | "Kosong";
 export type ModeJimpitan = "Harian" | "Bulanan" | "Bebas";
 export type TipeJimpitan = "harian" | "bulanan";
-export type SumberDana = "Kas Bapak" | "Kas Ibu" | "Jimpitan";
+export type SumberDana = "Kas Bapak" | "Kas Ibu" | "Jimpitan" | "Arisan";
 export type KategoriPengeluaran =
   | "Operasional"
   | "Keamanan"

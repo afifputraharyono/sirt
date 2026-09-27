@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useLocation } from "react-router-dom";
 import { PageHeader } from "@/shared/components/layout/PageHeader";
 import { BottomDrawer } from "@/shared/components/ui/BottomDrawer";
 import {
@@ -28,20 +29,69 @@ import { RT_CONFIG } from "@/shared/lib/constants";
 
 const BULAN_NAMES = ["", "Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 const KATEGORI_PENGELUARAN: KategoriPengeluaran[] = ["Operasional", "Keamanan", "Kebersihan", "Sosial", "Pembangunan", "Kegiatan", "Lainnya"];
-const SUMBER_DANA: SumberDana[] = ["Kas Bapak", "Kas Ibu", "Jimpitan"];
 const SELECT_CLASS = "flex h-10 w-full rounded-[11px] border border-input bg-background px-3 py-2 text-[13.5px]";
 
-const TABS = [
-  { key: "kas-bapak", label: "Kas Bapak" },
-  { key: "kas-ibu", label: "Kas Ibu" },
-  { key: "jimpitan", label: "Jimpitan" },
-  { key: "pengeluaran", label: "Pengeluaran" },
-] as const;
+const METODE_BAYAR = ["Cash", "Transfer"] as const;
+
+type PageMode = "bapak" | "ibu";
+
+interface ModeConfig {
+  title: string;
+  description: string;
+  kasTipe: TipeKas;
+  kasNominal: number;
+  kasLabel: string;
+  secondTabKey: string;
+  secondTabLabel: string;
+  sumberDana: SumberDana[];
+  saldoCards: (saldo: ReturnType<typeof useSaldoKas>["data"]) => { title: string; value: number }[];
+}
+
+const MODE_CONFIGS: Record<PageMode, ModeConfig> = {
+  bapak: {
+    title: "Kas Bapak & Jimpitan",
+    description: "Kelola kas bapak, jimpitan, dan pengeluaran",
+    kasTipe: "Bapak",
+    kasNominal: RT_CONFIG.nominal_kas_bulanan_bapak,
+    kasLabel: "Kas Bapak",
+    secondTabKey: "jimpitan",
+    secondTabLabel: "Jimpitan",
+    sumberDana: ["Kas Bapak", "Jimpitan"],
+    saldoCards: (saldo) => [
+      { title: "Kas Bapak", value: (saldo?.kas_bapak_masuk ?? 0) - (saldo?.pengeluaran_kas_bapak ?? 0) },
+      { title: "Jimpitan", value: (saldo?.jimpitan_masuk ?? 0) - (saldo?.pengeluaran_jimpitan ?? 0) },
+    ],
+  },
+  ibu: {
+    title: "Kas Ibu & Arisan",
+    description: "Kelola kas ibu, arisan, dan pengeluaran",
+    kasTipe: "Ibu",
+    kasNominal: RT_CONFIG.nominal_kas_bulanan_ibu,
+    kasLabel: "Kas Ibu",
+    secondTabKey: "arisan",
+    secondTabLabel: "Arisan",
+    sumberDana: ["Kas Ibu", "Arisan"],
+    saldoCards: (saldo) => [
+      { title: "Kas Ibu", value: (saldo?.kas_ibu_masuk ?? 0) - (saldo?.pengeluaran_kas_ibu ?? 0) },
+      { title: "Arisan", value: (saldo?.arisan_masuk ?? 0) - (saldo?.pengeluaran_arisan ?? 0) },
+    ],
+  },
+};
 
 const now = new Date();
 
 export default function AdminKeuangan() {
-  const [tab, setTab] = useState<string>("kas-bapak");
+  const location = useLocation();
+  const mode: PageMode = location.pathname.includes("/ibu") ? "ibu" : "bapak";
+  const config = MODE_CONFIGS[mode];
+
+  const tabs = [
+    { key: "kas", label: config.kasLabel },
+    { key: config.secondTabKey, label: config.secondTabLabel },
+    { key: "pengeluaran", label: "Pengeluaran" },
+  ];
+
+  const [tab, setTab] = useState<string>("kas");
   const [bulan, setBulan] = useState(now.getMonth() + 1);
   const [tahun, setTahun] = useState(now.getFullYear());
   const { data: saldo, isLoading: saldoLoading } = useSaldoKas();
@@ -74,17 +124,13 @@ export default function AdminKeuangan() {
     });
   };
 
-  const saldoCards = [
-    { title: "Kas Bapak", value: (saldo?.kas_bapak_masuk ?? 0) - (saldo?.pengeluaran_kas_bapak ?? 0) },
-    { title: "Kas Ibu", value: (saldo?.kas_ibu_masuk ?? 0) - (saldo?.pengeluaran_kas_ibu ?? 0) },
-    { title: "Jimpitan", value: (saldo?.jimpitan_masuk ?? 0) - (saldo?.pengeluaran_jimpitan ?? 0) },
-  ];
+  const saldoCards = config.saldoCards(saldo);
 
   return (
     <div className="flex flex-col gap-4">
       <PageHeader
-        title="Keuangan"
-        description="Kelola kas bulanan, jimpitan, dan pengeluaran"
+        title={config.title}
+        description={config.description}
         actions={
           <button
             onClick={handleCetakLaporan}
@@ -133,7 +179,7 @@ export default function AdminKeuangan() {
       {/* Pill tabs */}
       <div className="-mx-4 overflow-x-auto px-4 scrollbar-none [&::-webkit-scrollbar]:hidden">
         <div className="flex gap-1 rounded-[14px] bg-muted p-1" style={{ minWidth: "max-content" }}>
-          {TABS.map((t) => (
+          {tabs.map((t) => (
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
@@ -150,10 +196,16 @@ export default function AdminKeuangan() {
       </div>
 
       {/* Tab content */}
-      {tab === "kas-bapak" && <KasTab tipe="Bapak" bulan={bulan} tahun={tahun} nominal={RT_CONFIG.nominal_kas_bulanan_bapak} />}
-      {tab === "kas-ibu" && <KasTab tipe="Ibu" bulan={bulan} tahun={tahun} nominal={RT_CONFIG.nominal_kas_bulanan_ibu} />}
+      {tab === "kas" && (
+        <KasTab tipe={config.kasTipe} bulan={bulan} tahun={tahun} nominal={config.kasNominal} withArisan={mode === "ibu"} />
+      )}
       {tab === "jimpitan" && <JimpitanTab bulan={bulan} tahun={tahun} />}
-      {tab === "pengeluaran" && <PengeluaranTab bulan={bulan} tahun={tahun} />}
+      {tab === "arisan" && (
+        <KasTab tipe="Arisan" bulan={bulan} tahun={tahun} nominal={RT_CONFIG.nominal_arisan} optional />
+      )}
+      {tab === "pengeluaran" && (
+        <PengeluaranTab bulan={bulan} tahun={tahun} sumberFilter={config.sumberDana} />
+      )}
     </div>
   );
 }
@@ -178,8 +230,9 @@ function AddButton({ label, onClick }: { label: string; onClick: () => void }) {
   );
 }
 
-function KasTab({ tipe, bulan, tahun, nominal }: { tipe: TipeKas; bulan: number; tahun: number; nominal: number }) {
+function KasTab({ tipe, bulan, tahun, nominal, optional, withArisan }: { tipe: TipeKas; bulan: number; tahun: number; nominal: number; optional?: boolean; withArisan?: boolean }) {
   const { data: kasList, isLoading } = useKasByMonth(tipe, bulan, tahun);
+  const { data: arisanList } = useKasByMonth("Arisan", bulan, tahun);
   const { data: rumahList } = useRumahList();
   const createKas = useCreateKas();
   const deleteKas = useDeleteKas();
@@ -187,6 +240,7 @@ function KasTab({ tipe, bulan, tahun, nominal }: { tipe: TipeKas; bulan: number;
 
   const [drawer, setDrawer] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [selectedRumahId, setSelectedRumahId] = useState("");
   const [showRange, setShowRange] = useState(false);
   const [dari, setDari] = useState(() => {
     const d = new Date();
@@ -199,48 +253,88 @@ function KasTab({ tipe, bulan, tahun, nominal }: { tipe: TipeKas; bulan: number;
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
+    const rumahId = fd.get("rumah_id") as string;
+    const tanggalBayar = fd.get("tanggal_bayar") as string;
+    const metodeBayar = (fd.get("metode_bayar") as string) || null;
+    const keterangan = (fd.get("keterangan") as string) || null;
+    const bayarArisan = withArisan && fd.get("bayar_arisan") === "on";
+
     createKas.mutate({
-      rumah_id: fd.get("rumah_id") as string,
+      rumah_id: rumahId,
       tipe_kas: tipe,
       bulan,
       tahun,
       jumlah: nominal,
       status_bayar: true,
-      tanggal_bayar: fd.get("tanggal_bayar") as string,
-      metode_bayar: (fd.get("metode_bayar") as string) || null,
-      keterangan: (fd.get("keterangan") as string) || null,
+      tanggal_bayar: tanggalBayar,
+      metode_bayar: metodeBayar,
+      keterangan,
       dicatat_oleh: user?.id ?? "",
-    }, { onSuccess: () => setDrawer(false) });
+    }, {
+      onSuccess: () => {
+        if (bayarArisan) {
+          createKas.mutate({
+            rumah_id: rumahId,
+            tipe_kas: "Arisan",
+            bulan,
+            tahun,
+            jumlah: RT_CONFIG.nominal_arisan,
+            status_bayar: true,
+            tanggal_bayar: tanggalBayar,
+            metode_bayar: metodeBayar,
+            keterangan,
+            dicatat_oleh: user?.id ?? "",
+          }, { onSuccess: () => { setDrawer(false); setSelectedRumahId(""); } });
+        } else {
+          setDrawer(false);
+          setSelectedRumahId("");
+        }
+      },
+    });
   };
 
   const activeRumah = rumahList?.filter((r) => r.is_active && r.status_hunian !== "Kosong") ?? [];
   const paidRumahIds = new Set(kasList?.map((k) => k.rumah_id));
+  const paidArisanIds = new Set(arisanList?.map((k) => k.rumah_id));
   const unpaidRumah = activeRumah.filter((r) => !paidRumahIds.has(r.id));
 
+  const sortedKasList = useMemo(() => {
+    if (!kasList) return [];
+    return [...kasList].sort((a, b) =>
+      (a.rumah_kk?.no_rumah ?? "").localeCompare(b.rumah_kk?.no_rumah ?? "", undefined, { numeric: true })
+    );
+  }, [kasList]);
+
   const paidCount = kasList?.length ?? 0;
-  const totalCount = activeRumah.length;
+  const totalCount = optional ? paidCount : activeRumah.length;
   const totalTerkumpul = kasList?.reduce((s, k) => s + k.jumlah, 0) ?? 0;
-  const totalExpected = totalCount * nominal;
+  const totalExpected = optional ? totalTerkumpul : totalCount * nominal;
   const totalKekurangan = totalExpected - totalTerkumpul;
 
   const rangeTotal = kasRange?.reduce((s, k) => s + k.jumlah, 0) ?? 0;
 
+  const tipeLabel = tipe === "Arisan" ? "Arisan" : `Kas ${tipe}`;
+
   return (
     <SectionCard>
       {/* Summary bar */}
-      <div className="mb-3 grid grid-cols-3 gap-2 text-center">
+      <div className={`mb-3 grid gap-2 text-center ${optional ? "grid-cols-2" : "grid-cols-3"}`}>
         <div className="rounded-xl bg-emerald-500/10 p-2">
-          <div className="font-mono text-[14px] font-extrabold text-emerald-600 dark:text-emerald-400">{paidCount}/{totalCount}</div>
-          <div className="text-[10px] text-muted-foreground">Lunas</div>
+          <div className="font-mono text-[14px] font-extrabold text-emerald-600 dark:text-emerald-400">
+            {optional ? paidCount : `${paidCount}/${totalCount}`}
+          </div>
+          <div className="text-[10px] text-muted-foreground">{optional ? "Rumah Bayar" : "Lunas"}</div>
         </div>
         <div className="rounded-xl bg-primary/10 p-2">
           <div className="font-mono text-[14px] font-extrabold text-primary">{formatRupiah(totalTerkumpul)}</div>
           <div className="text-[10px] text-muted-foreground">Terkumpul</div>
         </div>
-        <div className="rounded-xl bg-amber-500/10 p-2">
-          <div className="font-mono text-[14px] font-extrabold text-amber-600 dark:text-amber-400">{formatRupiah(totalKekurangan)}</div>
-          <div className="text-[10px] text-muted-foreground">Kekurangan</div>
-        </div>
+        {!optional && (
+          <div className="rounded-xl bg-amber-500/10 p-2">
+            <div className="font-mono text-[14px] font-extrabold text-amber-600 dark:text-amber-400">{formatRupiah(totalKekurangan)}</div>
+            <div className="text-[10px] text-muted-foreground">Kekurangan</div>
+          </div>
+        )}
       </div>
 
       <div className="mb-3 flex items-center justify-between">
@@ -252,7 +346,7 @@ function KasTab({ tipe, bulan, tahun, nominal }: { tipe: TipeKas; bulan: number;
 
       {isLoading ? <Skeleton className="h-32 w-full rounded-xl" /> : (
         <div className="flex flex-col gap-2">
-          {kasList?.map((k) => (
+          {sortedKasList.map((k) => (
             <div key={k.id} className="flex items-center justify-between rounded-xl bg-muted/40 px-3 py-2.5">
               <div>
                 <div className="text-[13px] font-bold">Rumah {k.rumah_kk?.no_rumah ?? "-"}</div>
@@ -270,7 +364,7 @@ function KasTab({ tipe, bulan, tahun, nominal }: { tipe: TipeKas; bulan: number;
               </div>
             </div>
           ))}
-          {unpaidRumah.map((r) => (
+          {!optional && unpaidRumah.map((r) => (
             <div key={r.id} className="flex items-center justify-between rounded-xl border border-dashed border-amber-500/40 bg-amber-500/5 px-3 py-2.5">
               <div>
                 <div className="text-[13px] font-bold text-amber-700 dark:text-amber-300">Rumah {r.no_rumah}</div>
@@ -279,7 +373,7 @@ function KasTab({ tipe, bulan, tahun, nominal }: { tipe: TipeKas; bulan: number;
               <span className="rounded-full border border-amber-500/40 bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400">Belum Bayar</span>
             </div>
           ))}
-          {kasList?.length === 0 && unpaidRumah.length === 0 && (
+          {sortedKasList.length === 0 && (optional || unpaidRumah.length === 0) && (
             <p className="py-6 text-center text-[13px] text-muted-foreground">Belum ada data</p>
           )}
         </div>
@@ -306,7 +400,7 @@ function KasTab({ tipe, bulan, tahun, nominal }: { tipe: TipeKas; bulan: number;
             </div>
             <div className="flex items-center justify-between rounded-xl bg-primary/10 px-3 py-2.5">
               <div>
-                <div className="text-[11px] text-muted-foreground">Total Kas {tipe} terkumpul</div>
+                <div className="text-[11px] text-muted-foreground">Total {tipeLabel} terkumpul</div>
                 <div className="text-[10.5px] text-muted-foreground">{kasRange?.length ?? 0} pembayaran</div>
               </div>
               <span className="font-mono text-[15px] font-extrabold text-primary">{formatRupiah(rangeTotal)}</span>
@@ -315,13 +409,15 @@ function KasTab({ tipe, bulan, tahun, nominal }: { tipe: TipeKas; bulan: number;
         )}
       </div>
 
-      <BottomDrawer open={drawer} onOpenChange={setDrawer} title={`Catat Pembayaran Kas ${tipe}`}>
+      <BottomDrawer open={drawer} onOpenChange={setDrawer} title={`Catat Pembayaran ${tipeLabel}`}>
         <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
           <div className="flex flex-col gap-1.5">
             <Label className="text-[12.5px] font-bold">Rumah *</Label>
-            <select name="rumah_id" required className={SELECT_CLASS}>
+            <select name="rumah_id" required className={SELECT_CLASS} value={selectedRumahId} onChange={(e) => setSelectedRumahId(e.target.value)}>
               <option value="">Pilih rumah...</option>
-              {unpaidRumah.map((r) => <option key={r.id} value={r.id}>Rumah {r.no_rumah}</option>)}
+              {(optional ? activeRumah.filter((r) => !paidRumahIds.has(r.id)) : unpaidRumah).map((r) => (
+                <option key={r.id} value={r.id}>Rumah {r.no_rumah}</option>
+              ))}
             </select>
           </div>
           <div className="flex flex-col gap-1.5">
@@ -330,8 +426,31 @@ function KasTab({ tipe, bulan, tahun, nominal }: { tipe: TipeKas; bulan: number;
           </div>
           <div className="flex flex-col gap-1.5">
             <Label className="text-[12.5px] font-bold">Metode Bayar</Label>
-            <Input name="metode_bayar" placeholder="Tunai / Transfer" className="rounded-[11px]" />
+            <select name="metode_bayar" className={SELECT_CLASS}>
+              <option value="">Pilih metode...</option>
+              {METODE_BAYAR.map((m) => <option key={m} value={m}>{m}</option>)}
+            </select>
           </div>
+          {withArisan && (
+            <label className={`flex items-center gap-2.5 rounded-[11px] border border-border/60 px-3 py-2.5 ${
+              selectedRumahId && paidArisanIds.has(selectedRumahId) ? "opacity-50" : ""
+            }`}>
+              <input
+                type="checkbox"
+                name="bayar_arisan"
+                defaultChecked
+                disabled={!selectedRumahId || paidArisanIds.has(selectedRumahId)}
+                className="h-4 w-4 rounded border-border accent-primary"
+              />
+              <div>
+                <div className="text-[12.5px] font-bold">Sekalian bayar Arisan</div>
+                <div className="text-[11px] text-muted-foreground">{formatRupiah(RT_CONFIG.nominal_arisan)}/bulan</div>
+              </div>
+              {selectedRumahId && paidArisanIds.has(selectedRumahId) && (
+                <span className="ml-auto rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">Sudah Lunas</span>
+              )}
+            </label>
+          )}
           <div className="flex flex-col gap-1.5">
             <Label className="text-[12.5px] font-bold">Keterangan</Label>
             <Input name="keterangan" className="rounded-[11px]" />
@@ -346,7 +465,7 @@ function KasTab({ tipe, bulan, tahun, nominal }: { tipe: TipeKas; bulan: number;
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Hapus data pembayaran?</AlertDialogTitle>
-            <AlertDialogDescription>Data pembayaran kas akan dihapus permanen.</AlertDialogDescription>
+            <AlertDialogDescription>Data pembayaran akan dihapus permanen.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Batal</AlertDialogCancel>
@@ -699,14 +818,19 @@ function JimpitanPerRumah({ bulan, tahun }: { bulan: number; tahun: number }) {
   );
 }
 
-function PengeluaranTab({ bulan, tahun }: { bulan: number; tahun: number }) {
-  const { data: list, isLoading } = usePengeluaran(bulan, tahun);
+function PengeluaranTab({ bulan, tahun, sumberFilter }: { bulan: number; tahun: number; sumberFilter: SumberDana[] }) {
+  const { data: rawList, isLoading } = usePengeluaran(bulan, tahun);
   const { data: grupList } = useGrupPengeluaran();
   const createPengeluaran = useCreatePengeluaran();
   const deletePengeluaran = useDeletePengeluaran();
   const createGrup = useCreateGrupPengeluaran();
   const deleteGrup = useDeleteGrupPengeluaran();
   const user = useAuthStore((s) => s.user);
+
+  const list = useMemo(
+    () => rawList?.filter((p) => sumberFilter.includes(p.sumber_dana as SumberDana)) ?? [],
+    [rawList, sumberFilter],
+  );
 
   const [drawer, setDrawer] = useState(false);
   const [grupDrawer, setGrupDrawer] = useState(false);
@@ -720,7 +844,11 @@ function PengeluaranTab({ bulan, tahun }: { bulan: number; tahun: number }) {
     return d.toISOString().split("T")[0]!;
   });
   const [sampai, setSampai] = useState(() => new Date().toISOString().split("T")[0]!);
-  const { data: pengeluaranRange } = usePengeluaranByRange(dari, sampai);
+  const { data: pengeluaranRangeRaw } = usePengeluaranByRange(dari, sampai);
+  const pengeluaranRange = useMemo(
+    () => pengeluaranRangeRaw?.filter((p) => sumberFilter.includes(p.sumber_dana as SumberDana)) ?? [],
+    [pengeluaranRangeRaw, sumberFilter],
+  );
 
   const toggleGrup = (id: string) => {
     const next = new Set(expandedGrups);
@@ -730,7 +858,6 @@ function PengeluaranTab({ bulan, tahun }: { bulan: number; tahun: number }) {
   };
 
   const { grouped, ungrouped, totalPengeluaran } = useMemo(() => {
-    if (!list) return { grouped: new Map<string, { nama: string; items: PengeluaranWithGrup[]; total: number }>(), ungrouped: [] as PengeluaranWithGrup[], totalPengeluaran: 0 };
     const gMap = new Map<string, { nama: string; items: PengeluaranWithGrup[]; total: number }>();
     const ung: PengeluaranWithGrup[] = [];
     let total = 0;
@@ -779,6 +906,7 @@ function PengeluaranTab({ bulan, tahun }: { bulan: number; tahun: number }) {
     "Kas Bapak": "bg-blue-500/15 text-blue-600 dark:text-blue-400",
     "Kas Ibu": "bg-pink-500/15 text-pink-600 dark:text-pink-400",
     "Jimpitan": "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
+    "Arisan": "bg-violet-500/15 text-violet-600 dark:text-violet-400",
   };
 
   return (
@@ -801,7 +929,6 @@ function PengeluaranTab({ bulan, tahun }: { bulan: number; tahun: number }) {
 
       {isLoading ? <Skeleton className="h-32 w-full rounded-xl" /> : (
         <div className="flex flex-col gap-2.5">
-          {/* Grouped items */}
           {Array.from(grouped.entries()).map(([grupId, g]) => {
             const isOpen = expandedGrups.has(grupId);
             return (
@@ -849,7 +976,6 @@ function PengeluaranTab({ bulan, tahun }: { bulan: number; tahun: number }) {
             );
           })}
 
-          {/* Ungrouped items */}
           {ungrouped.map((p) => (
             <PengeluaranRow
               key={p.id}
@@ -859,7 +985,7 @@ function PengeluaranTab({ bulan, tahun }: { bulan: number; tahun: number }) {
             />
           ))}
 
-          {list?.length === 0 && (
+          {list.length === 0 && (
             <p className="py-6 text-center text-[13px] text-muted-foreground">Belum ada data</p>
           )}
         </div>
@@ -878,10 +1004,11 @@ function PengeluaranTab({ bulan, tahun }: { bulan: number; tahun: number }) {
           }
         </button>
         {showRange && (() => {
-          const rangeTotal = pengeluaranRange?.reduce((s, p) => s + p.nominal, 0) ?? 0;
-          const bySumber = { "Kas Bapak": 0, "Kas Ibu": 0, "Jimpitan": 0 };
-          pengeluaranRange?.forEach((p) => {
-            if (p.sumber_dana in bySumber) bySumber[p.sumber_dana as keyof typeof bySumber] += p.nominal;
+          const rangeTotal = pengeluaranRange.reduce((s, p) => s + p.nominal, 0);
+          const bySumber: Record<string, number> = {};
+          sumberFilter.forEach((s) => { bySumber[s] = 0; });
+          pengeluaranRange.forEach((p) => {
+            if (p.sumber_dana in bySumber) bySumber[p.sumber_dana] = (bySumber[p.sumber_dana] ?? 0) + p.nominal;
           });
           return (
             <div className="mt-2 flex flex-col gap-2">
@@ -893,15 +1020,15 @@ function PengeluaranTab({ bulan, tahun }: { bulan: number; tahun: number }) {
               <div className="flex items-center justify-between rounded-xl bg-destructive/10 px-3 py-2.5">
                 <div>
                   <div className="text-[11px] text-muted-foreground">Total Pengeluaran</div>
-                  <div className="text-[10.5px] text-muted-foreground">{pengeluaranRange?.length ?? 0} transaksi</div>
+                  <div className="text-[10.5px] text-muted-foreground">{pengeluaranRange.length} transaksi</div>
                 </div>
                 <span className="font-mono text-[15px] font-extrabold text-destructive">{formatRupiah(rangeTotal)}</span>
               </div>
               <div className="flex flex-col gap-1">
-                {(["Kas Bapak", "Kas Ibu", "Jimpitan"] as const).map((src) => (
+                {sumberFilter.map((src) => (
                   <div key={src} className="flex items-center justify-between rounded-lg bg-muted/40 px-3 py-1.5">
                     <span className="text-[11.5px] text-muted-foreground">Dari {src}</span>
-                    <span className="font-mono text-[11.5px] font-bold text-destructive">{formatRupiah(bySumber[src])}</span>
+                    <span className="font-mono text-[11.5px] font-bold text-destructive">{formatRupiah(bySumber[src] ?? 0)}</span>
                   </div>
                 ))}
               </div>
@@ -920,8 +1047,8 @@ function PengeluaranTab({ bulan, tahun }: { bulan: number; tahun: number }) {
             </div>
             <div className="flex flex-col gap-1.5">
               <Label className="text-[12.5px] font-bold">Sumber Dana *</Label>
-              <select name="sumber_dana" required defaultValue="Kas Bapak" className={SELECT_CLASS}>
-                {SUMBER_DANA.map((s) => <option key={s} value={s}>{s}</option>)}
+              <select name="sumber_dana" required defaultValue={sumberFilter[0]} className={SELECT_CLASS}>
+                {sumberFilter.map((s) => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
           </div>

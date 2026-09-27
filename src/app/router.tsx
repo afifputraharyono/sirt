@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { createBrowserRouter } from "react-router-dom";
+import { createBrowserRouter, Navigate } from "react-router-dom";
 import { AuthGuard } from "@/features/auth/components/AuthGuard";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -64,7 +64,9 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <S><AdminDashboard /></S> },
       { path: "warga", element: <S><AdminWarga /></S> },
-      { path: "keuangan", element: <S><AdminKeuangan /></S> },
+      { path: "keuangan", element: <Navigate to="/admin/keuangan/bapak" replace /> },
+      { path: "keuangan/bapak", element: <S><AdminKeuangan /></S> },
+      { path: "keuangan/ibu", element: <S><AdminKeuangan /></S> },
       { path: "ronda", element: <S><AdminRonda /></S> },
       { path: "surat", element: <S><AdminSurat /></S> },
       { path: "pengumuman", element: <S><AdminPengumuman /></S> },

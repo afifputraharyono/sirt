@@ -7,6 +7,7 @@ export const RT_CONFIG = {
   nama_ketua_rt: "",
   nominal_kas_bulanan_bapak: 10_000,
   nominal_kas_bulanan_ibu: 20_000,
+  nominal_arisan: 20_000,
   nominal_jimpitan_default: 500,
   jam_ronda_mulai: "22:00",
   jam_ronda_selesai: "05:00",
