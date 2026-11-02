@@ -45,4 +45,9 @@ export const queryKeys = {
     all: ["inventaris"] as const,
     available: () => [...queryKeys.inventaris.all, "available"] as const,
   },
+  public: {
+    all: ["public"] as const,
+    tagihan: (noRumah: string, tahun: number) =>
+      [...queryKeys.public.all, "tagihan", noRumah, tahun] as const,
+  },
 } as const;

@@ -23,3 +23,5 @@ Thumbs.db
 
 # Debug logs
 npm-debug.log*
+
+graphify-out/

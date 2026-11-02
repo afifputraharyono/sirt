@@ -12,4 +12,11 @@ export const RT_CONFIG = {
   jam_ronda_mulai: "22:00",
   jam_ronda_selesai: "05:00",
   max_anggota_ronda_per_hari: 4,
+  // Bulan mulai kewajiban per jenis (1=Januari ... 12=Desember).
+  // null = belum berjalan di sistem → kewajiban per rumah 0.
+  mulai_kewajiban: {
+    kas_bapak: null, // masih manual, belum tercatat di sistem
+    kas_ibu: 8, // mulai Agustus
+    arisan: 9, // siklus mulai September
+  },
 } as const;

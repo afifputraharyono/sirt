@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
-import { Home, Shield, Megaphone, LogIn } from "lucide-react";
+import { Home, Shield, Megaphone, LogIn, Wallet } from "lucide-react";
 import { useAuthStore } from "@/features/auth/store";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/shared/components/layout/ThemeToggle";
@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { to: "/", label: "Beranda", icon: Home },
   { to: "/jadwal", label: "Jadwal", icon: Shield },
   { to: "/pengumuman", label: "Pengumuman", icon: Megaphone },
+  { to: "/keuangan", label: "Keuangan", icon: Wallet },
 ] as const;
 
 function getDashboardPath(role: string) {
@@ -71,7 +72,7 @@ export default function PublicLayout() {
       </main>
 
       <nav className="fixed bottom-0 left-1/2 z-30 w-full max-w-[430px] -translate-x-1/2 border-t border-border/60 bg-background/80 backdrop-blur-2xl safe-area-pb">
-        <div className="grid grid-cols-3 px-2.5 py-2">
+        <div className="grid grid-cols-4 px-2.5 py-2">
           {NAV_ITEMS.map(({ to, label, icon: Icon }) => {
             const active =
               to === "/" ? pathname === "/" : pathname.startsWith(to);

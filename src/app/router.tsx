@@ -11,6 +11,7 @@ const BerandaPublik = lazy(() => import("@/app/routes/index"));
 const LoginPage = lazy(() => import("@/app/routes/login"));
 const JadwalPublik = lazy(() => import("@/app/routes/jadwal"));
 const PengumumanPublik = lazy(() => import("@/app/routes/pengumuman.public"));
+const KeuanganPublik = lazy(() => import("@/app/routes/keuangan.public"));
 const NotFound = lazy(() => import("@/app/routes/not-found"));
 
 const AdminDashboard = lazy(() => import("@/app/routes/admin.dashboard"));
@@ -50,6 +51,7 @@ export const router = createBrowserRouter([
       { path: "login", element: <S><LoginPage /></S> },
       { path: "jadwal", element: <S><JadwalPublik /></S> },
       { path: "pengumuman", element: <S><PengumumanPublik /></S> },
+      { path: "keuangan", element: <S><KeuanganPublik /></S> },
     ],
   },
   {
