@@ -27,6 +27,15 @@ export default function AdminDashboard() {
 
   const isLoading = rumahLoading || saldoLoading;
 
+  // Arisan adalah dana bergulir: pemasukan dan penyalurannya tidak
+  // dihitung di saldo utama (konsisten dengan halaman Keuangan).
+  const saldoKasBapak =
+    (saldo?.kas_bapak_masuk ?? 0) - (saldo?.pengeluaran_kas_bapak ?? 0);
+  const saldoKasIbu =
+    (saldo?.kas_ibu_masuk ?? 0) - (saldo?.pengeluaran_kas_ibu ?? 0);
+  const totalPengeluaran =
+    (saldo?.total_pengeluaran ?? 0) - (saldo?.pengeluaran_arisan ?? 0);
+
   const statCards = [
     {
       title: "Total Rumah",
@@ -38,7 +47,7 @@ export default function AdminDashboard() {
     },
     {
       title: "Saldo Kas Bapak",
-      value: formatRupiah(saldo?.kas_bapak_masuk ?? 0),
+      value: formatRupiah(saldoKasBapak),
       icon: Wallet,
       iconBg: "bg-emerald-100 dark:bg-emerald-950/40",
       iconColor: "text-emerald-600 dark:text-emerald-400",
@@ -47,7 +56,7 @@ export default function AdminDashboard() {
     },
     {
       title: "Saldo Kas Ibu",
-      value: formatRupiah(saldo?.kas_ibu_masuk ?? 0),
+      value: formatRupiah(saldoKasIbu),
       icon: CreditCard,
       iconBg: "bg-emerald-100 dark:bg-emerald-950/40",
       iconColor: "text-emerald-600 dark:text-emerald-400",
@@ -56,7 +65,7 @@ export default function AdminDashboard() {
     },
     {
       title: "Total Pengeluaran",
-      value: formatRupiah(saldo?.total_pengeluaran ?? 0),
+      value: formatRupiah(totalPengeluaran),
       icon: Shield,
       iconBg: "bg-orange-100 dark:bg-orange-950/40",
       iconColor: "text-orange-600 dark:text-orange-400",
@@ -211,9 +220,13 @@ export default function AdminDashboard() {
             <div className="flex justify-between border-t border-border/60 pt-2.5">
               <span className="text-muted-foreground">Total Pengeluaran</span>
               <span className="font-mono font-bold text-destructive">
-                {formatRupiah(saldo?.total_pengeluaran ?? 0)}
+                {formatRupiah(totalPengeluaran)}
               </span>
             </div>
+            <p className="text-[11px] leading-relaxed text-muted-foreground">
+              Pengeluaran &amp; saldo tidak termasuk arisan — dana bergulir,
+              langsung disalurkan ke pemenang.
+            </p>
           </div>
         )}
       </div>
