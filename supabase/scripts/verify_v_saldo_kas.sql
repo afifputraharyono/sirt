@@ -30,7 +30,7 @@
 -- A1. Riwayat migrasi: pastikan status 013 dan 014.
 --     Jika 013 belum tercatat, `supabase db push` akan menjalankannya
 --     lebih dulu, lalu 014. Keduanya aman berurutan.
-SELECT version, name, inserted_at
+SELECT version, name
 FROM supabase_migrations.schema_migrations
 ORDER BY version;
 
@@ -184,6 +184,12 @@ WHERE source_ns.nspname = 'public'
 --     - /keuangan (publik)   -> kartu "Arisan" Rp600.000, total saldo naik
 --     - /admin (dashboard)   -> tidak berubah (memang tidak memakai arisan)
 
+-- B8. Constraint CHECK sumber_dana harus sudah memuat 'Arisan'.
+SELECT conname, pg_get_constraintdef(oid) AS definisi
+FROM pg_constraint
+WHERE conrelid = 'public.pengeluaran_kas'::regclass
+  AND contype = 'c';
+
 
 -- ============================================================
 -- ROLLBACK (metadata-only, jalankan hanya bila diperlukan)
@@ -201,18 +207,19 @@ WHERE source_ns.nspname = 'public'
 --   COALESCE((SELECT SUM(nominal) FROM public.pengeluaran_kas WHERE sumber_dana = 'Kas Ibu'), 0) AS pengeluaran_kas_ibu,
 --   COALESCE((SELECT SUM(nominal) FROM public.pengeluaran_kas WHERE sumber_dana = 'Jimpitan'), 0) AS pengeluaran_jimpitan;
 -- GRANT SELECT ON public.v_saldo_kas TO anon, authenticated;
+-- -- Opsional: kembalikan CHECK versi 012 (tanpa 'Arisan').
+-- -- Hanya aman jika belum ada pengeluaran bersumber 'Arisan'.
+-- -- ALTER TABLE public.pengeluaran_kas
+-- --   DROP CONSTRAINT IF EXISTS pengeluaran_kas_sumber_dana_check;
+-- -- ALTER TABLE public.pengeluaran_kas
+-- --   ADD CONSTRAINT pengeluaran_kas_sumber_dana_check
+-- --   CHECK (sumber_dana IN ('Kas Bapak', 'Kas Ibu', 'Jimpitan'));
 -- COMMIT;
 
 
 -- ============================================================
--- OPSIONAL — bukan bagian fix view.
--- Jalankan hanya jika A7 belum memuat 'Arisan'. Validasi constraint
--- memindai 5 baris yang ada (semuanya 'Kas Ibu') tanpa menulis ulang
--- data; jika ada nilai di luar daftar, perintah gagal dan tidak
--- mengubah apa pun.
+-- CATATAN
+-- Perbaikan CHECK sumber_dana sudah menjadi bagian dari migrasi
+-- 20261123000014 (setelah terbukti A7 masih versi 012). Cek hasilnya
+-- di B8.
 -- ============================================================
--- ALTER TABLE public.pengeluaran_kas
---   DROP CONSTRAINT IF EXISTS pengeluaran_kas_sumber_dana_check;
--- ALTER TABLE public.pengeluaran_kas
---   ADD CONSTRAINT pengeluaran_kas_sumber_dana_check
---   CHECK (sumber_dana IN ('Kas Bapak', 'Kas Ibu', 'Jimpitan', 'Arisan'));

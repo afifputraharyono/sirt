@@ -6,10 +6,16 @@
 --   sehingga arisan_masuk & pengeluaran_arisan tidak tersedia dan
 --   UI menampilkan saldo Arisan Rp0.
 --
+--   Di production, migrasi 013 juga tidak tercatat di schema_migrations
+--   meskipun enum 'Arisan' sudah ada dan datanya sudah terisi. Akibatnya
+--   CHECK sumber_dana masih versi 012 (tanpa 'Arisan'), sehingga
+--   pengeluaran dana arisan tidak bisa disimpan. Migrasi ini sekaligus
+--   memperbaiki constraint tersebut agar self-contained.
+--
 -- Sifat perubahan:
---   DDL view saja (metadata). Tidak ada DML/DDL pada tabel dan tidak
---   ada baris data yang diubah atau dihapus. v_saldo_kas adalah view
---   biasa (bukan materialized), sehingga tidak perlu refresh.
+--   DDL view + constraint (metadata). Tidak ada DML dan tidak ada baris
+--   data yang diubah atau dihapus. v_saldo_kas adalah view biasa (bukan
+--   materialized), sehingga tidak perlu refresh.
 --
 -- Keamanan eksekusi:
 --   - DROP tanpa CASCADE: jika ada objek yang bergantung pada view,
@@ -41,3 +47,12 @@ SELECT
 -- sebelumnya. Default privileges Supabase biasanya sudah menggrant ini;
 -- pernyataan eksplisit membuat hasil deterministik setelah DROP/CREATE.
 GRANT SELECT ON public.v_saldo_kas TO anon, authenticated;
+
+-- Perbaiki CHECK sumber_dana yang tertinggal di versi 012.
+-- Validasi memindai 5 baris yang ada (semuanya 'Kas Ibu'); jika ada nilai
+-- di luar daftar, pernyataan gagal dan seluruh transaksi rollback.
+ALTER TABLE public.pengeluaran_kas
+  DROP CONSTRAINT IF EXISTS pengeluaran_kas_sumber_dana_check;
+ALTER TABLE public.pengeluaran_kas
+  ADD CONSTRAINT pengeluaran_kas_sumber_dana_check
+  CHECK (sumber_dana IN ('Kas Bapak', 'Kas Ibu', 'Jimpitan', 'Arisan'));
