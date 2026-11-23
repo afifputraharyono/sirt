@@ -121,6 +121,7 @@ export default function AdminKeuangan() {
         kategori: p.kategori,
         keterangan: p.keterangan ?? "",
         nominal: p.nominal,
+        sumber_dana: p.sumber_dana,
       })),
       saldo,
     });

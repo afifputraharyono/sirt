@@ -178,13 +178,20 @@ export interface LaporanKeuanganData {
   tahun: number;
   kasBapak: { noRumah: string; jumlah: number; status: boolean }[];
   kasIbu: { noRumah: string; jumlah: number; status: boolean }[];
-  pengeluaran: { tanggal: string; kategori: string; keterangan: string; nominal: number }[];
+  pengeluaran: {
+    tanggal: string;
+    kategori: string;
+    keterangan: string;
+    nominal: number;
+    sumber_dana?: string;
+  }[];
   saldo: {
     kas_bapak_masuk: number;
     kas_ibu_masuk: number;
     jimpitan_masuk: number;
     iuran_insidental_masuk: number;
     total_pengeluaran: number;
+    pengeluaran_arisan: number;
   };
 }
 
@@ -194,7 +201,19 @@ export function cetakLaporanKeuangan(data: LaporanKeuanganData) {
     data.saldo.kas_ibu_masuk +
     data.saldo.jimpitan_masuk +
     data.saldo.iuran_insidental_masuk;
-  const saldoAkhir = totalMasuk - data.saldo.total_pengeluaran;
+
+  // Arisan adalah dana bergulir: penyalurannya tidak membebani kas utama,
+  // jadi tidak ikut dihitung di saldo akhir maupun daftar pengeluaran.
+  const pengeluaranKas = data.pengeluaran.filter(
+    (p) => p.sumber_dana !== "Arisan"
+  );
+  const totalPengeluaranKas =
+    data.saldo.total_pengeluaran - data.saldo.pengeluaran_arisan;
+  const totalPengeluaranPeriode = pengeluaranKas.reduce(
+    (s, p) => s + p.nominal,
+    0
+  );
+  const saldoAkhir = totalMasuk - totalPengeluaranKas;
 
   const kasBapakRows = data.kasBapak
     .map(
@@ -228,7 +247,7 @@ export function cetakLaporanKeuangan(data: LaporanKeuanganData) {
     .filter((k) => k.status)
     .reduce((s, k) => s + k.jumlah, 0);
 
-  const pengeluaranRows = data.pengeluaran
+  const pengeluaranRows = pengeluaranKas
     .map(
       (p, i) =>
         `<tr>
@@ -276,7 +295,7 @@ export function cetakLaporanKeuangan(data: LaporanKeuanganData) {
     </table>
 
     ${
-      data.pengeluaran.length > 0
+      pengeluaranKas.length > 0
         ? `
     <h4 style="margin-top:20px;">C. Pengeluaran</h4>
     <table class="laporan">
@@ -285,7 +304,7 @@ export function cetakLaporanKeuangan(data: LaporanKeuanganData) {
       </thead>
       <tbody>${pengeluaranRows}</tbody>
       <tfoot>
-        <tr><td colspan="4" style="text-align:right"><strong>Total Pengeluaran:</strong></td><td class="angka">${formatRupiahPlain(data.saldo.total_pengeluaran)}</td></tr>
+        <tr><td colspan="4" style="text-align:right"><strong>Total Pengeluaran:</strong></td><td class="angka">${formatRupiahPlain(totalPengeluaranPeriode)}</td></tr>
       </tfoot>
     </table>`
         : ""
@@ -299,8 +318,9 @@ export function cetakLaporanKeuangan(data: LaporanKeuanganData) {
         <tr><td>Jimpitan Masuk</td><td class="angka">${formatRupiahPlain(data.saldo.jimpitan_masuk)}</td></tr>
         <tr><td>Iuran Insidental Masuk</td><td class="angka">${formatRupiahPlain(data.saldo.iuran_insidental_masuk)}</td></tr>
         <tr style="border-top:2px solid #000"><td><strong>Total Pemasukan</strong></td><td class="angka"><strong>${formatRupiahPlain(totalMasuk)}</strong></td></tr>
-        <tr><td>Total Pengeluaran</td><td class="angka">${formatRupiahPlain(data.saldo.total_pengeluaran)}</td></tr>
+        <tr><td>Total Pengeluaran</td><td class="angka">${formatRupiahPlain(totalPengeluaranKas)}</td></tr>
         <tr style="border-top:2px solid #000"><td><strong>Saldo Akhir</strong></td><td class="angka"><strong>${formatRupiahPlain(saldoAkhir)}</strong></td></tr>
+        <tr><td colspan="2" style="font-size:11px;color:#555">Catatan: arisan (dana bergulir) sebesar ${formatRupiahPlain(data.saldo.pengeluaran_arisan)} tidak dihitung dalam saldo.</td></tr>
       </tbody>
     </table>
 
