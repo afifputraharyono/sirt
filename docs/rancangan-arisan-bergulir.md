@@ -1,7 +1,9 @@
 # Rancangan: Arisan Bergulir (Putaran & Penyaluran)
 
 Status: kode + migrasi 015 sudah live di production (2026-11-23); 013/014
-sudah tercatat sebelumnya. Backfill Sep/Okt belum dijalankan.
+sudah tercatat sebelumnya. Backfill Sep/Okt sudah diterapkan 2026-11-23
+(26 baris setoran Sep + 2 putaran + 2 penyaluran tertaut); smoke test publik
+lolos, uji tulis admin belum dilakukan.
 Konteks: SIRT Wonoyoso, admin + publik mobile-only, Supabase production aktif.
 
 ## 1. Keputusan inti
@@ -472,7 +474,7 @@ BEGIN
       CONTINUE;
     END IF;
 
-    SELECT count(*), min(id) INTO v_jml, v_rumah_id
+    SELECT count(*) INTO v_jml
     FROM public.rumah_kk
     WHERE no_rumah = v_periode.no_rumah
       AND ikut_arisan
@@ -485,6 +487,12 @@ BEGIN
       RAISE EXCEPTION 'No. rumah % duplikat (% rumah aktif)',
         v_periode.no_rumah, v_jml;
     END IF;
+
+    SELECT id INTO v_rumah_id
+    FROM public.rumah_kk
+    WHERE no_rumah = v_periode.no_rumah
+      AND ikut_arisan
+      AND is_active;
 
     SELECT COALESCE(SUM(jumlah), 0) INTO v_pot
     FROM public.kas_bulanan
@@ -1041,6 +1049,11 @@ Risiko dan mitigasi:
 6. Setoran Sep 2026 dianggap sudah dibayar semua meski belum tercatat;
    tidak ada backfill otomatis.
 
-Data: migrasi 015 sudah diterapkan 2026-11-23 (DDL + seed flag 28 rumah).
-Backfill Sep/Okt belum dijalankan; pembacaan data sebelum apply memakai
-anon key read-only sesuai RLS publik, tanpa mencetak kredensial.
+Data: migrasi 015 diterapkan 2026-11-23 (DDL + seed flag 28 rumah), lalu
+backfill Sep/Okt diterapkan pada tanggal yang sama setelah frontend live:
+26 baris setoran Sep (28 baris total, Rp560.000), putaran Sep A22 dan Okt A31
+masing-masing Rp560.000 dengan `pengeluaran_kas` tertaut, `v_arisan_rekap`
+mismatch 0, dan `v_saldo_kas` arisan_masuk = pengeluaran_arisan = Rp1.120.000.
+Script §3.4 memakai count-then-select id (bukan `min(uuid)` yang tidak ada).
+Pembacaan data sebelum apply memakai anon key read-only sesuai RLS publik,
+tanpa mencetak kredensial.
