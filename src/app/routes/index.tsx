@@ -59,13 +59,26 @@ function SaldoSection() {
     (saldo?.kas_ibu_masuk ?? 0) +
     (saldo?.jimpitan_masuk ?? 0) +
     (saldo?.iuran_insidental_masuk ?? 0);
-  const totalKeluar = saldo?.total_pengeluaran ?? 0;
+  // Arisan adalah dana bergulir: pemasukan dan penyalurannya tidak
+  // dihitung di saldo utama (konsisten dengan halaman Keuangan).
+  const totalKeluar =
+    (saldo?.total_pengeluaran ?? 0) - (saldo?.pengeluaran_arisan ?? 0);
   const saldoAkhir = totalMasuk - totalKeluar;
 
   const kasItems = [
-    { label: "Kas Bapak", value: saldo?.kas_bapak_masuk ?? 0 },
-    { label: "Kas Ibu", value: saldo?.kas_ibu_masuk ?? 0 },
-    { label: "Jimpitan", value: saldo?.jimpitan_masuk ?? 0 },
+    {
+      label: "Kas Bapak",
+      value:
+        (saldo?.kas_bapak_masuk ?? 0) - (saldo?.pengeluaran_kas_bapak ?? 0),
+    },
+    {
+      label: "Kas Ibu",
+      value: (saldo?.kas_ibu_masuk ?? 0) - (saldo?.pengeluaran_kas_ibu ?? 0),
+    },
+    {
+      label: "Jimpitan",
+      value: (saldo?.jimpitan_masuk ?? 0) - (saldo?.pengeluaran_jimpitan ?? 0),
+    },
   ];
 
   return (
@@ -111,6 +124,10 @@ function SaldoSection() {
           </div>
         ))}
       </div>
+      <p className="mt-2 text-[11px] leading-relaxed opacity-75">
+        Saldo tidak termasuk arisan — dana bergulir, langsung disalurkan ke
+        pemenang.
+      </p>
     </div>
   );
 }
