@@ -67,6 +67,7 @@ export interface RumahKK {
   status_hunian: StatusHunian;
   mode_jimpitan: ModeJimpitan;
   catatan: string | null;
+  ikut_arisan: boolean;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -151,6 +152,37 @@ export interface GrupPengeluaran {
   dibuat_oleh: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface ArisanPutaran {
+  id: string;
+  bulan: number;
+  tahun: number;
+  pemenang_rumah_id: string;
+  nominal: number;
+  tanggal_undi: string | null;
+  pengeluaran_id: string | null;
+  catatan: string | null;
+  dicatat_oleh: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ArisanRekap {
+  tahun: number;
+  bulan: number;
+  putaran_id: string | null;
+  pemenang_rumah_id: string | null;
+  pemenang_no_rumah: string | null;
+  nominal_terkumpul: number;
+  jumlah_pembayar: number;
+  nominal_putaran: number | null;
+  sudah_disalurkan: boolean;
+  tanggal_undi: string | null;
+  pengeluaran_id: string | null;
+  catatan: string | null;
+  created_at: string | null;
+  updated_at: string | null;
 }
 
 export interface JadwalRonda {

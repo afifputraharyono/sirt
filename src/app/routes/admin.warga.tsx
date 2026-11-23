@@ -84,6 +84,7 @@ export default function AdminWarga() {
       status_hunian: fd.get("status_hunian") as StatusHunian,
       mode_jimpitan: fd.get("mode_jimpitan") as ModeJimpitan,
       catatan: (fd.get("catatan") as string) || null,
+      ikut_arisan: fd.get("ikut_arisan") === "on",
     };
     if (editRumah) {
       updateRumah.mutate(
@@ -229,6 +230,20 @@ export default function AdminWarga() {
             <select name="mode_jimpitan" defaultValue={editRumah?.mode_jimpitan ?? "Harian"} className={SELECT_CLASS}>
               {MODE_JIMPITAN.map((m) => <option key={m} value={m}>{m}</option>)}
             </select>
+          </FormField>
+          <FormField label="Status Arisan">
+            <label className="flex items-center gap-2.5 rounded-[11px] border border-border/60 px-3 py-2.5">
+              <input
+                type="checkbox"
+                name="ikut_arisan"
+                defaultChecked={editRumah?.ikut_arisan ?? false}
+                className="h-4 w-4 rounded border-border accent-primary"
+              />
+              <div>
+                <div className="text-[12.5px] font-bold">Ikut Arisan</div>
+                <div className="text-[11px] text-muted-foreground">Peserta arisan bergulir</div>
+              </div>
+            </label>
           </FormField>
           <FormField label="Catatan">
             <Input name="catatan" defaultValue={editRumah?.catatan ?? ""} className="rounded-[11px]" />
@@ -387,6 +402,11 @@ function RumahCard({
             <span className={`rounded-full px-2 py-0.5 text-[10.5px] font-bold ${HUNIAN_BADGE[rumah.status_hunian] ?? ""}`}>
               {rumah.status_hunian}
             </span>
+            {rumah.ikut_arisan && (
+              <span className="rounded-full bg-violet-500/15 px-2 py-0.5 text-[10.5px] font-bold text-violet-600 dark:text-violet-400">
+                Arisan
+              </span>
+            )}
           </div>
           <div className="mt-0.5 text-[12px] text-muted-foreground">
             {kk?.nama_lengkap ?? "Belum ada KK"} · {activeWarga.length} anggota

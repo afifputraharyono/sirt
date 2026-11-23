@@ -4,6 +4,8 @@ import type {
   JimpitanHarian,
   PengeluaranKas,
   GrupPengeluaran,
+  ArisanPutaran,
+  ArisanRekap,
   TipeKas,
 } from "@/shared/types/database";
 
@@ -342,4 +344,60 @@ export async function fetchSaldoKas() {
     pengeluaran_jimpitan: number;
     pengeluaran_arisan: number;
   };
+}
+
+// ==================== ARISAN ====================
+
+export async function fetchArisanRekap(tahun?: number) {
+  let query = supabase
+    .from("v_arisan_rekap")
+    .select("*")
+    .order("tahun", { ascending: false })
+    .order("bulan", { ascending: false });
+
+  if (tahun) query = query.eq("tahun", tahun);
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return data as ArisanRekap[];
+}
+
+export interface SimpanArisanPutaranInput {
+  bulan: number;
+  tahun: number;
+  pemenang_rumah_id: string;
+  nominal: number;
+  tanggal_undi: string | null;
+  catatan: string | null;
+  salurkan: boolean;
+  tanggal_salur: string | null;
+}
+
+export async function simpanArisanPutaran(input: SimpanArisanPutaranInput) {
+  const { data, error } = await supabase.rpc("fn_simpan_arisan_putaran", {
+    p_bulan: input.bulan,
+    p_tahun: input.tahun,
+    p_pemenang_rumah_id: input.pemenang_rumah_id,
+    p_nominal: input.nominal,
+    p_tanggal_undi: input.tanggal_undi,
+    p_catatan: input.catatan,
+    p_salurkan: input.salurkan,
+    p_tanggal_salur: input.tanggal_salur,
+  });
+  if (error) throw error;
+  return data as ArisanPutaran;
+}
+
+export async function salurkanArisanPutaran(id: string, tanggal: string) {
+  const { data, error } = await supabase.rpc("fn_salurkan_arisan_putaran", {
+    p_id: id,
+    p_tanggal: tanggal,
+  });
+  if (error) throw error;
+  return data as ArisanPutaran;
+}
+
+export async function deleteArisanPutaran(id: string) {
+  const { error } = await supabase.from("arisan_putaran").delete().eq("id", id);
+  if (error) throw error;
 }

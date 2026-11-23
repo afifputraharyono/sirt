@@ -170,13 +170,15 @@ export async function fetchTagihanRumah(noRumah: string): Promise<TagihanRumah> 
 
   const { data: rumahRows, error: rumahError } = await supabase
     .from("rumah_kk")
-    .select("id, no_rumah, status_hunian, is_active")
+    .select("id, no_rumah, status_hunian, is_active, ikut_arisan")
     .eq("no_rumah", noRumah.trim())
     .eq("is_active", true)
     .limit(1);
   if (rumahError) throw rumahError;
   const rumah = (
-    rumahRows as Pick<RumahKK, "id" | "no_rumah" | "status_hunian">[] | null
+    rumahRows as
+      | Pick<RumahKK, "id" | "no_rumah" | "status_hunian" | "ikut_arisan">[]
+      | null
   )?.[0];
 
   if (!rumah) {
@@ -194,24 +196,14 @@ export async function fetchTagihanRumah(noRumah: string): Promise<TagihanRumah> 
     };
   }
 
-  const [{ data: kasRows, error: kasError }, { data: arisanRows, error: arisanError }] =
-    await Promise.all([
-      supabase
-        .from("kas_bulanan")
-        .select("tipe_kas, bulan, tahun")
-        .eq("rumah_id", rumah.id)
-        .eq("tahun", tahun),
-      supabase
-        .from("kas_bulanan")
-        .select("id")
-        .eq("rumah_id", rumah.id)
-        .eq("tipe_kas", "Arisan")
-        .limit(1),
-    ]);
+  const { data: kasRows, error: kasError } = await supabase
+    .from("kas_bulanan")
+    .select("tipe_kas, bulan, tahun")
+    .eq("rumah_id", rumah.id)
+    .eq("tahun", tahun);
   if (kasError) throw kasError;
-  if (arisanError) throw arisanError;
 
-  const pesertaArisan = (arisanRows?.length ?? 0) > 0;
+  const pesertaArisan = rumah.ikut_arisan;
 
   return hitungTagihan({
     noRumah: rumah.no_rumah,

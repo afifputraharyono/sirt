@@ -29,7 +29,13 @@ export async function fetchRumahDetail(id: string) {
 
 export type CreateRumahInput = Pick<
   RumahKK,
-  "no_rumah" | "no_kk" | "alamat_lengkap" | "status_hunian" | "mode_jimpitan" | "catatan"
+  | "no_rumah"
+  | "no_kk"
+  | "alamat_lengkap"
+  | "status_hunian"
+  | "mode_jimpitan"
+  | "catatan"
+  | "ikut_arisan"
 >;
 
 export async function createRumah(input: CreateRumahInput) {

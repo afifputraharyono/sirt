@@ -6,10 +6,13 @@ import {
   upsertJimpitanBatch,
   createPengeluaran,
   updatePengeluaran,
+  simpanArisanPutaran,
+  salurkanArisanPutaran,
   type CreateKasInput,
   type CreateJimpitanInput,
   type UpdateJimpitanInput,
   type CreatePengeluaranInput,
+  type SimpanArisanPutaranInput,
 } from "@/features/keuangan/services";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -31,4 +34,7 @@ export const mutationRegistry: Record<string, (vars: any) => Promise<any>> = {
     ...input
   }: { id: string } & Partial<CreatePengeluaranInput>) =>
     updatePengeluaran(id, input),
+  "arisan:simpan": (vars: SimpanArisanPutaranInput) => simpanArisanPutaran(vars),
+  "arisan:salurkan": ({ id, tanggal }: { id: string; tanggal: string }) =>
+    salurkanArisanPutaran(id, tanggal),
 };

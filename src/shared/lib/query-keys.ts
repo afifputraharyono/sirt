@@ -18,6 +18,11 @@ export const queryKeys = {
     saldoByType: (tipe: TipeKas) =>
       [...queryKeys.kas.all, "saldo", tipe] as const,
   },
+  arisan: {
+    all: ["kas", "arisan"] as const,
+    rekap: (tahun?: number) =>
+      ["kas", "arisan", "rekap", tahun ?? "all"] as const,
+  },
   jimpitan: {
     all: ["jimpitan"] as const,
     byDate: (tanggal: string) =>

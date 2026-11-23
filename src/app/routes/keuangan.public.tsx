@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useSaldoKas, usePengeluaran } from "@/features/keuangan/hooks";
 import { useTagihanRumah } from "@/features/public/hooks";
+import { ArisanFlowCard } from "@/features/public/components/ArisanFlowCard";
 import { formatRupiah, formatTanggalPendek } from "@/shared/utils/format";
 import { RT_CONFIG } from "@/shared/lib/constants";
 
@@ -138,13 +139,15 @@ function TransparansiTab({
     tahun,
   );
 
+  // Arisan adalah dana bergulir: tidak masuk saldo utama, ditampilkan
+  // terpisah di kartu Arus Arisan.
   const totalMasuk =
     (saldo?.kas_bapak_masuk ?? 0) +
     (saldo?.kas_ibu_masuk ?? 0) +
-    (saldo?.arisan_masuk ?? 0) +
     (saldo?.jimpitan_masuk ?? 0) +
     (saldo?.iuran_insidental_masuk ?? 0);
-  const totalKeluar = saldo?.total_pengeluaran ?? 0;
+  const totalKeluar =
+    (saldo?.total_pengeluaran ?? 0) - (saldo?.pengeluaran_arisan ?? 0);
   const saldoAkhir = totalMasuk - totalKeluar;
 
   const sumberDana = [
@@ -158,17 +161,17 @@ function TransparansiTab({
       value: (saldo?.kas_ibu_masuk ?? 0) - (saldo?.pengeluaran_kas_ibu ?? 0),
     },
     {
-      label: "Arisan",
-      value: (saldo?.arisan_masuk ?? 0) - (saldo?.pengeluaran_arisan ?? 0),
-    },
-    {
       label: "Jimpitan",
       value: (saldo?.jimpitan_masuk ?? 0) - (saldo?.pengeluaran_jimpitan ?? 0),
     },
   ];
 
+  const pengeluaranKas = (pengeluaran ?? []).filter(
+    (p) => p.sumber_dana !== "Arisan",
+  );
+
   const totalPengeluaranBulan =
-    pengeluaran?.reduce((s, p) => s + p.nominal, 0) ?? 0;
+    pengeluaranKas.reduce((s, p) => s + p.nominal, 0) ?? 0;
 
   return (
     <div className="flex flex-col gap-3">
@@ -225,6 +228,13 @@ function TransparansiTab({
         ))}
       </div>
 
+      <p className="text-[11px] leading-relaxed text-muted-foreground">
+        Saldo tidak termasuk arisan — dana bergulir, langsung disalurkan ke
+        pemenang.
+      </p>
+
+      <ArisanFlowCard bulan={bulan} tahun={tahun} />
+
       <div className="flex items-center gap-2">
         <select
           value={bulan}
@@ -266,13 +276,13 @@ function TransparansiTab({
 
         {keluarLoading ? (
           <Skeleton className="mt-3 h-32 w-full rounded-xl" />
-        ) : !pengeluaran || pengeluaran.length === 0 ? (
+        ) : pengeluaranKas.length === 0 ? (
           <p className="py-6 text-center text-[13px] text-muted-foreground">
             Belum ada pengeluaran bulan ini.
           </p>
         ) : (
           <div className="mt-3 flex flex-col gap-2">
-            {pengeluaran.slice(0, 20).map((p) => (
+            {pengeluaranKas.slice(0, 20).map((p) => (
               <div
                 key={p.id}
                 className="flex items-center justify-between rounded-xl bg-muted/40 px-3 py-2.5"
@@ -290,9 +300,9 @@ function TransparansiTab({
                 </span>
               </div>
             ))}
-            {pengeluaran.length > 20 && (
+            {pengeluaranKas.length > 20 && (
               <p className="text-center text-[11.5px] text-muted-foreground">
-                +{pengeluaran.length - 20} transaksi lainnya
+                +{pengeluaranKas.length - 20} transaksi lainnya
               </p>
             )}
           </div>

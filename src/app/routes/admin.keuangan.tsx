@@ -21,6 +21,7 @@ import {
 } from "@/features/keuangan/hooks";
 import { useRumahList } from "@/features/warga/hooks";
 import { useAuthStore } from "@/features/auth/store";
+import { ArisanPutaranTab } from "@/features/keuangan/components/ArisanPutaranTab";
 import type { TipeKas, KategoriPengeluaran, StatusJimpitan, SumberDana } from "@/shared/types/database";
 import type { JimpitanWithRumah, PengeluaranWithGrup } from "@/features/keuangan/services";
 import { formatRupiah, formatTanggalPendek } from "@/shared/utils/format";
@@ -73,7 +74,7 @@ const MODE_CONFIGS: Record<PageMode, ModeConfig> = {
     sumberDana: ["Kas Ibu", "Arisan"],
     saldoCards: (saldo) => [
       { title: "Kas Ibu", value: (saldo?.kas_ibu_masuk ?? 0) - (saldo?.pengeluaran_kas_ibu ?? 0) },
-      { title: "Arisan", value: (saldo?.arisan_masuk ?? 0) - (saldo?.pengeluaran_arisan ?? 0) },
+      { title: "Arisan belum disalurkan", value: (saldo?.arisan_masuk ?? 0) - (saldo?.pengeluaran_arisan ?? 0) },
     ],
   },
 };
@@ -88,6 +89,7 @@ export default function AdminKeuangan() {
   const tabs = [
     { key: "kas", label: config.kasLabel },
     { key: config.secondTabKey, label: config.secondTabLabel },
+    ...(mode === "ibu" ? [{ key: "putaran", label: "Putaran" }] : []),
     { key: "pengeluaran", label: "Pengeluaran" },
   ];
 
@@ -203,6 +205,9 @@ export default function AdminKeuangan() {
       {tab === "arisan" && (
         <KasTab tipe="Arisan" bulan={bulan} tahun={tahun} nominal={RT_CONFIG.nominal_arisan} optional />
       )}
+      {tab === "putaran" && mode === "ibu" && (
+        <ArisanPutaranTab bulan={bulan} tahun={tahun} />
+      )}
       {tab === "pengeluaran" && (
         <PengeluaranTab bulan={bulan} tahun={tahun} sumberFilter={config.sumberDana} />
       )}
@@ -294,9 +299,12 @@ function KasTab({ tipe, bulan, tahun, nominal, optional, withArisan }: { tipe: T
   };
 
   const activeRumah = rumahList?.filter((r) => r.is_active && r.status_hunian !== "Kosong") ?? [];
+  const pesertaArisan = activeRumah.filter((r) => r.ikut_arisan);
   const paidRumahIds = new Set(kasList?.map((k) => k.rumah_id));
   const paidArisanIds = new Set(arisanList?.map((k) => k.rumah_id));
   const unpaidRumah = activeRumah.filter((r) => !paidRumahIds.has(r.id));
+  const selectedIsPeserta =
+    !!selectedRumahId && pesertaArisan.some((r) => r.id === selectedRumahId);
 
   const sortedKasList = useMemo(() => {
     if (!kasList) return [];
@@ -415,7 +423,10 @@ function KasTab({ tipe, bulan, tahun, nominal, optional, withArisan }: { tipe: T
             <Label className="text-[12.5px] font-bold">Rumah *</Label>
             <select name="rumah_id" required className={SELECT_CLASS} value={selectedRumahId} onChange={(e) => setSelectedRumahId(e.target.value)}>
               <option value="">Pilih rumah...</option>
-              {(optional ? activeRumah.filter((r) => !paidRumahIds.has(r.id)) : unpaidRumah).map((r) => (
+              {(optional
+                ? pesertaArisan.filter((r) => !paidRumahIds.has(r.id))
+                : unpaidRumah
+              ).map((r) => (
                 <option key={r.id} value={r.id}>Rumah {r.no_rumah}</option>
               ))}
             </select>
@@ -431,22 +442,22 @@ function KasTab({ tipe, bulan, tahun, nominal, optional, withArisan }: { tipe: T
               {METODE_BAYAR.map((m) => <option key={m} value={m}>{m}</option>)}
             </select>
           </div>
-          {withArisan && (
+          {withArisan && selectedIsPeserta && (
             <label className={`flex items-center gap-2.5 rounded-[11px] border border-border/60 px-3 py-2.5 ${
-              selectedRumahId && paidArisanIds.has(selectedRumahId) ? "opacity-50" : ""
+              paidArisanIds.has(selectedRumahId) ? "opacity-50" : ""
             }`}>
               <input
                 type="checkbox"
                 name="bayar_arisan"
                 defaultChecked
-                disabled={!selectedRumahId || paidArisanIds.has(selectedRumahId)}
+                disabled={paidArisanIds.has(selectedRumahId)}
                 className="h-4 w-4 rounded border-border accent-primary"
               />
               <div>
                 <div className="text-[12.5px] font-bold">Sekalian bayar Arisan</div>
                 <div className="text-[11px] text-muted-foreground">{formatRupiah(RT_CONFIG.nominal_arisan)}/bulan</div>
               </div>
-              {selectedRumahId && paidArisanIds.has(selectedRumahId) && (
+              {paidArisanIds.has(selectedRumahId) && (
                 <span className="ml-auto rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">Sudah Lunas</span>
               )}
             </label>

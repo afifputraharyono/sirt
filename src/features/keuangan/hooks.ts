@@ -27,11 +27,16 @@ import {
   fetchKasByRange,
   fetchJimpitanByRange,
   fetchSaldoKas,
+  fetchArisanRekap,
+  simpanArisanPutaran,
+  salurkanArisanPutaran,
+  deleteArisanPutaran,
   type CreateKasInput,
   type CreateJimpitanInput,
   type CreatePengeluaranInput,
   type UpdateJimpitanInput,
   type CreateGrupInput,
+  type SimpanArisanPutaranInput,
 } from "./services";
 import { toast } from "sonner";
 
@@ -224,6 +229,52 @@ export function useSaldoKas() {
   return useQuery({
     queryKey: queryKeys.kas.saldo(),
     queryFn: fetchSaldoKas,
+  });
+}
+
+// ==================== ARISAN ====================
+
+export function useArisanRekap(tahun?: number) {
+  return useQuery({
+    queryKey: queryKeys.arisan.rekap(tahun),
+    queryFn: () => fetchArisanRekap(tahun),
+  });
+}
+
+export function useSimpanArisanPutaran() {
+  return useOfflineMutation({
+    offlineKey: "arisan:simpan",
+    mutationFn: (input: SimpanArisanPutaranInput) => simpanArisanPutaran(input),
+    queryKeyToInvalidate: queryKeys.kas.all,
+    onSuccess: () => {
+      toast.success("Putaran arisan tersimpan");
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
+
+export function useSalurkanArisanPutaran() {
+  return useOfflineMutation({
+    offlineKey: "arisan:salurkan",
+    mutationFn: ({ id, tanggal }: { id: string; tanggal: string }) =>
+      salurkanArisanPutaran(id, tanggal),
+    queryKeyToInvalidate: queryKeys.kas.all,
+    onSuccess: () => {
+      toast.success("Pot arisan ditandai tersalurkan");
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
+
+export function useDeleteArisanPutaran() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteArisanPutaran(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.kas.all });
+      toast.success("Putaran arisan dihapus");
+    },
+    onError: (err: Error) => toast.error(err.message),
   });
 }
 
