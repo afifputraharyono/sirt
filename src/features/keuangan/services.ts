@@ -335,23 +335,85 @@ export async function fetchJimpitanByRange(from: string, to: string) {
 
 // ==================== SALDO ====================
 
-export async function fetchSaldoKas() {
+export interface SaldoKas {
+  kas_bapak_masuk: number;
+  kas_ibu_masuk: number;
+  arisan_masuk: number;
+  jimpitan_masuk: number;
+  iuran_insidental_masuk: number;
+  total_pengeluaran: number;
+  pengeluaran_kas_bapak: number;
+  pengeluaran_kas_ibu: number;
+  pengeluaran_jimpitan: number;
+  pengeluaran_arisan: number;
+  total_masuk: number;
+  total_pengeluaran_utama: number;
+  saldo_utama: number;
+  saldo_kas_bapak: number;
+  saldo_kas_ibu: number;
+  saldo_jimpitan: number;
+  arisan_belum_disalurkan: number;
+}
+
+export async function fetchSaldoKas(): Promise<SaldoKas> {
   const { data, error } = await supabase
     .from("v_saldo_kas")
     .select("*")
     .single();
   if (error) throw error;
-  return data as {
-    kas_bapak_masuk: number;
-    kas_ibu_masuk: number;
-    arisan_masuk: number;
-    jimpitan_masuk: number;
-    iuran_insidental_masuk: number;
-    total_pengeluaran: number;
-    pengeluaran_kas_bapak: number;
-    pengeluaran_kas_ibu: number;
-    pengeluaran_jimpitan: number;
-    pengeluaran_arisan: number;
+
+  // Kolom turunan diturunkan ulang di sini bila DB masih memakai versi view
+  // lama (10 kolom), supaya deploy frontend tidak bergantung urutan migrasi.
+  const row = data as Record<string, number | string | null>;
+  const num = (key: keyof SaldoKas) =>
+    row[key] == null ? 0 : Number(row[key]);
+  const pick = (key: keyof SaldoKas, fallback: number) =>
+    row[key] == null ? fallback : Number(row[key]);
+
+  const kasBapakMasuk = num("kas_bapak_masuk");
+  const kasIbuMasuk = num("kas_ibu_masuk");
+  const arisanMasuk = num("arisan_masuk");
+  const jimpitanMasuk = num("jimpitan_masuk");
+  const iuranMasuk = num("iuran_insidental_masuk");
+  const totalPengeluaran = num("total_pengeluaran");
+  const pengeluaranKasBapak = num("pengeluaran_kas_bapak");
+  const pengeluaranKasIbu = num("pengeluaran_kas_ibu");
+  const pengeluaranJimpitan = num("pengeluaran_jimpitan");
+  const pengeluaranArisan = num("pengeluaran_arisan");
+
+  const totalMasuk = kasBapakMasuk + kasIbuMasuk + jimpitanMasuk + iuranMasuk;
+  const totalPengeluaranUtama = totalPengeluaran - pengeluaranArisan;
+
+  return {
+    kas_bapak_masuk: kasBapakMasuk,
+    kas_ibu_masuk: kasIbuMasuk,
+    arisan_masuk: arisanMasuk,
+    jimpitan_masuk: jimpitanMasuk,
+    iuran_insidental_masuk: iuranMasuk,
+    total_pengeluaran: totalPengeluaran,
+    pengeluaran_kas_bapak: pengeluaranKasBapak,
+    pengeluaran_kas_ibu: pengeluaranKasIbu,
+    pengeluaran_jimpitan: pengeluaranJimpitan,
+    pengeluaran_arisan: pengeluaranArisan,
+    total_masuk: pick("total_masuk", totalMasuk),
+    total_pengeluaran_utama: pick(
+      "total_pengeluaran_utama",
+      totalPengeluaranUtama
+    ),
+    saldo_utama: pick("saldo_utama", totalMasuk - totalPengeluaranUtama),
+    saldo_kas_bapak: pick(
+      "saldo_kas_bapak",
+      kasBapakMasuk - pengeluaranKasBapak
+    ),
+    saldo_kas_ibu: pick("saldo_kas_ibu", kasIbuMasuk - pengeluaranKasIbu),
+    saldo_jimpitan: pick(
+      "saldo_jimpitan",
+      jimpitanMasuk - pengeluaranJimpitan
+    ),
+    arisan_belum_disalurkan: pick(
+      "arisan_belum_disalurkan",
+      arisanMasuk - pengeluaranArisan
+    ),
   };
 }
 

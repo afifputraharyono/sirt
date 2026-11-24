@@ -54,31 +54,15 @@ function SaldoSection() {
 
   if (isLoading) return <Skeleton className="h-52 w-full rounded-[20px]" />;
 
-  const totalMasuk =
-    (saldo?.kas_bapak_masuk ?? 0) +
-    (saldo?.kas_ibu_masuk ?? 0) +
-    (saldo?.jimpitan_masuk ?? 0) +
-    (saldo?.iuran_insidental_masuk ?? 0);
-  // Arisan adalah dana bergulir: pemasukan dan penyalurannya tidak
-  // dihitung di saldo utama (konsisten dengan halaman Keuangan).
-  const totalKeluar =
-    (saldo?.total_pengeluaran ?? 0) - (saldo?.pengeluaran_arisan ?? 0);
-  const saldoAkhir = totalMasuk - totalKeluar;
+  // Arisan adalah dana bergulir; view sudah memisahkannya dari saldo utama.
+  const totalMasuk = saldo?.total_masuk ?? 0;
+  const totalKeluar = saldo?.total_pengeluaran_utama ?? 0;
+  const saldoAkhir = saldo?.saldo_utama ?? 0;
 
   const kasItems = [
-    {
-      label: "Kas Bapak",
-      value:
-        (saldo?.kas_bapak_masuk ?? 0) - (saldo?.pengeluaran_kas_bapak ?? 0),
-    },
-    {
-      label: "Kas Ibu",
-      value: (saldo?.kas_ibu_masuk ?? 0) - (saldo?.pengeluaran_kas_ibu ?? 0),
-    },
-    {
-      label: "Jimpitan",
-      value: (saldo?.jimpitan_masuk ?? 0) - (saldo?.pengeluaran_jimpitan ?? 0),
-    },
+    { label: "Kas Bapak", value: saldo?.saldo_kas_bapak ?? 0 },
+    { label: "Kas Ibu", value: saldo?.saldo_kas_ibu ?? 0 },
+    { label: "Jimpitan", value: saldo?.saldo_jimpitan ?? 0 },
   ];
 
   return (

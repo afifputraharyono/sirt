@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useSaldoKas, usePengeluaran } from "@/features/keuangan/hooks";
 import { useTagihanRumah } from "@/features/public/hooks";
+import type { TipeTagihan } from "@/features/public/services";
 import { ArisanFlowCard } from "@/features/public/components/ArisanFlowCard";
 import { formatRupiah, formatTanggalPendek } from "@/shared/utils/format";
 import { RT_CONFIG } from "@/shared/lib/constants";
@@ -139,31 +140,15 @@ function TransparansiTab({
     tahun,
   );
 
-  // Arisan adalah dana bergulir: tidak masuk saldo utama, ditampilkan
-  // terpisah di kartu Arus Arisan.
-  const totalMasuk =
-    (saldo?.kas_bapak_masuk ?? 0) +
-    (saldo?.kas_ibu_masuk ?? 0) +
-    (saldo?.jimpitan_masuk ?? 0) +
-    (saldo?.iuran_insidental_masuk ?? 0);
-  const totalKeluar =
-    (saldo?.total_pengeluaran ?? 0) - (saldo?.pengeluaran_arisan ?? 0);
-  const saldoAkhir = totalMasuk - totalKeluar;
+  // Arisan adalah dana bergulir; view sudah memisahkannya dari saldo utama.
+  const totalMasuk = saldo?.total_masuk ?? 0;
+  const totalKeluar = saldo?.total_pengeluaran_utama ?? 0;
+  const saldoAkhir = saldo?.saldo_utama ?? 0;
 
   const sumberDana = [
-    {
-      label: "Kas Bapak",
-      value:
-        (saldo?.kas_bapak_masuk ?? 0) - (saldo?.pengeluaran_kas_bapak ?? 0),
-    },
-    {
-      label: "Kas Ibu",
-      value: (saldo?.kas_ibu_masuk ?? 0) - (saldo?.pengeluaran_kas_ibu ?? 0),
-    },
-    {
-      label: "Jimpitan",
-      value: (saldo?.jimpitan_masuk ?? 0) - (saldo?.pengeluaran_jimpitan ?? 0),
-    },
+    { label: "Kas Bapak", value: saldo?.saldo_kas_bapak ?? 0 },
+    { label: "Kas Ibu", value: saldo?.saldo_kas_ibu ?? 0 },
+    { label: "Jimpitan", value: saldo?.saldo_jimpitan ?? 0 },
   ];
 
   const pengeluaranKas = (pengeluaran ?? []).filter(
@@ -332,6 +317,25 @@ function TagihanTab({
     useTagihanRumah(noRumahCek);
   const [showDetail, setShowDetail] = useState(false);
 
+  const belumPerTipe = data?.detailPerBulan.reduce(
+    (map, b) => {
+      b.items
+        .filter((i) => !i.lunas)
+        .forEach((i) => {
+          const list = map.get(i.tipe) ?? [];
+          list.push(b.bulan);
+          map.set(i.tipe, list);
+        });
+      return map;
+    },
+    new Map<TipeTagihan, number[]>(),
+  );
+
+  const bulanKurangTeks = (tipe: TipeTagihan) =>
+    (belumPerTipe?.get(tipe) ?? [])
+      .map((b) => BULAN_NAMES[b]?.slice(0, 3))
+      .join(", ");
+
   return (
     <div className="flex flex-col gap-3">
       <form
@@ -406,7 +410,7 @@ function TagihanTab({
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <p className="text-[12.5px] font-medium opacity-85">
-                  Total Tunggakan
+                  Total Belum Dibayar
                 </p>
                 {data.totalNominalKurang === 0 ? (
                   <p className="mt-1 text-[24px] font-extrabold">Lunas semua</p>
@@ -423,7 +427,7 @@ function TagihanTab({
                 </span>
               ) : (
                 <span className="shrink-0 rounded-full bg-amber-500/25 px-2 py-0.5 text-[10px] font-bold text-amber-50">
-                  Ada Tunggakan
+                  Belum Lunas
                 </span>
               )}
             </div>
@@ -433,12 +437,22 @@ function TagihanTab({
             </p>
             <div className="mt-3 rounded-[14px] bg-white/15 px-3.5 py-3">
               <p className="text-[17px] font-extrabold">
-                {data.totalKurang} bulan tertunggak
+                {data.totalKurang} tagihan belum dibayar
               </p>
-              <p className="text-[11.5px] opacity-85">
-                dari total {data.rincian.reduce((s, r) => s + r.bulanWajib, 0)}{" "}
-                kewajiban bulan
-              </p>
+              <div className="mt-1 flex flex-col gap-0.5 text-[11.5px] opacity-90">
+                {[...(belumPerTipe ?? new Map<TipeTagihan, number[]>()).entries()].map(
+                  ([tipe, bulans]) => (
+                    <p key={tipe}>
+                      {labelRincian(tipe)}:{" "}
+                      <span className="font-semibold">
+                        {bulans
+                          .map((b) => BULAN_NAMES[b]?.slice(0, 3))
+                          .join(", ")}
+                      </span>
+                    </p>
+                  ),
+                )}
+              </div>
             </div>
           </div>
 
@@ -455,8 +469,8 @@ function TagihanTab({
                       {labelRincian(r.tipe)}
                     </p>
                     <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
-                      {formatRupiah(r.nominal)}/bulan · {r.jumlahLunas}/
-                      {r.bulanWajib} lunas
+                      {formatRupiah(r.nominal)}/bulan · {r.jumlahLunas} dari{" "}
+                      {r.bulanWajib} bulan lunas
                     </p>
                   </div>
                   {r.jumlahKurang === 0 ? (
@@ -469,7 +483,7 @@ function TagihanTab({
                         {formatRupiah(r.nominalKurang)}
                       </p>
                       <p className="text-[10px] text-muted-foreground">
-                        {r.jumlahKurang} bulan
+                        Belum {bulanKurangTeks(r.tipe)}
                       </p>
                     </div>
                   )}

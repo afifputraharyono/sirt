@@ -37,7 +37,7 @@ export function ArisanFlowCard({ bulan, tahun }: { bulan: number; tahun: number 
     <div className="rounded-[18px] border border-border/60 bg-card p-4">
       <div className="flex items-center gap-2">
         <Repeat className="h-4 w-4 text-violet-600 dark:text-violet-400" strokeWidth={2.2} />
-        <span className="text-[15px] font-bold">Arus Arisan</span>
+        <span className="text-[15px] font-bold">History Arisan</span>
       </div>
       <p className="mt-0.5 text-[11.5px] text-muted-foreground">
         Dana bergulir — terkumpul lalu langsung disalurkan ke pemenang.
@@ -45,13 +45,13 @@ export function ArisanFlowCard({ bulan, tahun }: { bulan: number; tahun: number 
 
       {isLoading ? (
         <Skeleton className="mt-3 h-32 w-full rounded-xl" />
-      ) : !current ? (
-        <p className="py-6 text-center text-[12.5px] text-muted-foreground">
-          Belum ada data arisan untuk {BULAN_NAMES[bulan]} {tahun}.
-        </p>
       ) : (
         <>
-          {(() => {
+          {!current ? (
+            <p className="py-6 text-center text-[12.5px] text-muted-foreground">
+              Belum ada data arisan untuk {BULAN_NAMES[bulan]} {tahun}.
+            </p>
+          ) : (() => {
             const kind = statusOf(current);
             const ui = STATUS_UI[kind];
             const sisa = Math.max(0, current.nominal_terkumpul - (current.nominal_putaran ?? 0));

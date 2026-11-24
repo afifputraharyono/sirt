@@ -192,28 +192,26 @@ export interface LaporanKeuanganData {
     iuran_insidental_masuk: number;
     total_pengeluaran: number;
     pengeluaran_arisan: number;
+    total_masuk: number;
+    total_pengeluaran_utama: number;
+    saldo_utama: number;
   };
 }
 
 export function cetakLaporanKeuangan(data: LaporanKeuanganData) {
-  const totalMasuk =
-    data.saldo.kas_bapak_masuk +
-    data.saldo.kas_ibu_masuk +
-    data.saldo.jimpitan_masuk +
-    data.saldo.iuran_insidental_masuk;
+  const totalMasuk = data.saldo.total_masuk;
 
   // Arisan adalah dana bergulir: penyalurannya tidak membebani kas utama,
   // jadi tidak ikut dihitung di saldo akhir maupun daftar pengeluaran.
   const pengeluaranKas = data.pengeluaran.filter(
     (p) => p.sumber_dana !== "Arisan"
   );
-  const totalPengeluaranKas =
-    data.saldo.total_pengeluaran - data.saldo.pengeluaran_arisan;
+  const totalPengeluaranKas = data.saldo.total_pengeluaran_utama;
   const totalPengeluaranPeriode = pengeluaranKas.reduce(
     (s, p) => s + p.nominal,
     0
   );
-  const saldoAkhir = totalMasuk - totalPengeluaranKas;
+  const saldoAkhir = data.saldo.saldo_utama;
 
   const kasBapakRows = data.kasBapak
     .map(

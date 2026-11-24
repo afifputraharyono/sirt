@@ -27,14 +27,10 @@ export default function AdminDashboard() {
 
   const isLoading = rumahLoading || saldoLoading;
 
-  // Arisan adalah dana bergulir: pemasukan dan penyalurannya tidak
-  // dihitung di saldo utama (konsisten dengan halaman Keuangan).
-  const saldoKasBapak =
-    (saldo?.kas_bapak_masuk ?? 0) - (saldo?.pengeluaran_kas_bapak ?? 0);
-  const saldoKasIbu =
-    (saldo?.kas_ibu_masuk ?? 0) - (saldo?.pengeluaran_kas_ibu ?? 0);
-  const totalPengeluaran =
-    (saldo?.total_pengeluaran ?? 0) - (saldo?.pengeluaran_arisan ?? 0);
+  // Arisan adalah dana bergulir; view sudah memisahkannya dari saldo utama.
+  const saldoKasBapak = saldo?.saldo_kas_bapak ?? 0;
+  const saldoKasIbu = saldo?.saldo_kas_ibu ?? 0;
+  const totalPengeluaran = saldo?.total_pengeluaran_utama ?? 0;
 
   const statCards = [
     {

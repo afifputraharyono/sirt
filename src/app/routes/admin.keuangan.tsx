@@ -56,8 +56,8 @@ const MODE_CONFIGS: Record<PageMode, ModeConfig> = {
     kasLabel: "Kas Bapak",
     sumberDana: ["Kas Bapak", "Jimpitan"],
     saldoCards: (saldo) => [
-      { title: "Kas Bapak", value: (saldo?.kas_bapak_masuk ?? 0) - (saldo?.pengeluaran_kas_bapak ?? 0) },
-      { title: "Jimpitan", value: (saldo?.jimpitan_masuk ?? 0) - (saldo?.pengeluaran_jimpitan ?? 0) },
+      { title: "Kas Bapak", value: saldo?.saldo_kas_bapak ?? 0 },
+      { title: "Jimpitan", value: saldo?.saldo_jimpitan ?? 0 },
     ],
   },
   ibu: {
@@ -68,8 +68,8 @@ const MODE_CONFIGS: Record<PageMode, ModeConfig> = {
     kasLabel: "Kas Ibu",
     sumberDana: ["Kas Ibu", "Arisan"],
     saldoCards: (saldo) => [
-      { title: "Kas Ibu", value: (saldo?.kas_ibu_masuk ?? 0) - (saldo?.pengeluaran_kas_ibu ?? 0) },
-      { title: "Arisan belum disalurkan", value: (saldo?.arisan_masuk ?? 0) - (saldo?.pengeluaran_arisan ?? 0) },
+      { title: "Kas Ibu", value: saldo?.saldo_kas_ibu ?? 0 },
+      { title: "Arisan belum disalurkan", value: saldo?.arisan_belum_disalurkan ?? 0 },
     ],
   },
 };
