@@ -105,6 +105,22 @@ export async function createWarga(input: CreateWargaInput) {
   return data as WargaDetail;
 }
 
+// Insert bertahap agar payload tidak melebihi batas request Supabase.
+export async function bulkCreateWarga(inputs: CreateWargaInput[]) {
+  const CHUNK = 200;
+  let inserted = 0;
+  for (let i = 0; i < inputs.length; i += CHUNK) {
+    const chunk = inputs.slice(i, i + CHUNK);
+    const { data, error } = await supabase
+      .from("warga_detail")
+      .insert(chunk)
+      .select("id");
+    if (error) throw error;
+    inserted += data?.length ?? 0;
+  }
+  return inserted;
+}
+
 export async function updateWarga(
   id: string,
   input: Partial<CreateWargaInput>

@@ -7,6 +7,7 @@ import {
   updateRumah,
   deleteRumah,
   createWarga,
+  bulkCreateWarga,
   updateWarga,
   deleteWarga,
   fetchKonteksWarga,
@@ -80,6 +81,18 @@ export function useCreateWarga() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.warga.all });
       toast.success("Warga berhasil ditambahkan");
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
+
+export function useImportWarga() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (inputs: CreateWargaInput[]) => bulkCreateWarga(inputs),
+    onSuccess: (inserted) => {
+      qc.invalidateQueries({ queryKey: queryKeys.warga.all });
+      toast.success(`${inserted} anggota warga berhasil diimpor`);
     },
     onError: (err: Error) => toast.error(err.message),
   });

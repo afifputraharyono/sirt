@@ -8,11 +8,19 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, ChevronDown, ChevronRight, Pencil, Trash2, UserPlus, Search, Home } from "lucide-react";
+import {
+  Plus, ChevronDown, ChevronRight, Pencil, Trash2, UserPlus, Search, Home,
+  Upload, Download, FileSpreadsheet, AlertTriangle, CheckCircle2, XCircle,
+} from "lucide-react";
+import { toast } from "sonner";
 import {
   useRumahList, useCreateRumah, useUpdateRumah, useDeleteRumah,
-  useCreateWarga, useUpdateWarga, useDeleteWarga,
+  useCreateWarga, useUpdateWarga, useDeleteWarga, useImportWarga,
 } from "@/features/warga/hooks";
+import {
+  buildWargaImportPreview, CSV_TEMPLATE,
+  type ImportPreview, type ImportRow,
+} from "@/features/warga/csv";
 import type { RumahWithWarga } from "@/features/warga/services";
 import type {
   WargaDetail, StatusHunian, JenisKelamin, HubunganKeluarga,
@@ -45,6 +53,7 @@ export default function AdminWarga() {
   const createWarga = useCreateWarga();
   const updateWarga = useUpdateWarga();
   const deleteWarga = useDeleteWarga();
+  const importWarga = useImportWarga();
 
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [rumahDrawer, setRumahDrawer] = useState(false);
@@ -57,6 +66,64 @@ export default function AdminWarga() {
     id: string;
   } | null>(null);
   const [search, setSearch] = useState("");
+  const [importOpen, setImportOpen] = useState(false);
+  const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
+  const [importFileName, setImportFileName] = useState("");
+  const [readingFile, setReadingFile] = useState(false);
+
+  const resetImport = () => {
+    setImportPreview(null);
+    setImportFileName("");
+  };
+
+  const handleImportFile = async (file: File | null) => {
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith(".csv")) {
+      toast.error("Pilih file berekstensi .csv");
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Ukuran file maksimal 2 MB");
+      return;
+    }
+    if (!rumahList) {
+      toast.error("Data rumah belum selesai dimuat");
+      return;
+    }
+    setReadingFile(true);
+    try {
+      const preview = buildWargaImportPreview(await file.text(), rumahList);
+      setImportPreview(preview);
+      setImportFileName(file.name);
+    } catch {
+      toast.error("File tidak bisa dibaca sebagai CSV");
+    } finally {
+      setReadingFile(false);
+    }
+  };
+
+  const handleDownloadTemplate = () => {
+    const blob = new Blob(["\uFEFF" + CSV_TEMPLATE], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "template-impor-warga.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportSubmit = () => {
+    const payloads = (importPreview?.rows ?? [])
+      .map((row) => row.payload)
+      .filter((payload): payload is NonNullable<typeof payload> => Boolean(payload));
+    if (payloads.length === 0) return;
+    importWarga.mutate(payloads, {
+      onSuccess: () => {
+        setImportOpen(false);
+        resetImport();
+      },
+    });
+  };
 
   const toggleRow = (id: string) => {
     const next = new Set(expandedRows);
@@ -148,13 +215,22 @@ export default function AdminWarga() {
         title="Data Warga"
         description="Kelola data rumah dan anggota keluarga"
         actions={
-          <button
-            onClick={() => { setEditRumah(null); setRumahDrawer(true); }}
-            className="flex items-center gap-1.5 rounded-xl bg-primary px-3.5 py-2.5 text-[13px] font-bold text-primary-foreground transition-transform active:scale-[0.96]"
-          >
-            <Plus className="h-4 w-4" strokeWidth={2.5} />
-            Tambah
-          </button>
+          <>
+            <button
+              onClick={() => { resetImport(); setImportOpen(true); }}
+              className="flex items-center gap-1.5 rounded-xl border border-border/60 bg-card px-3 py-2.5 text-[13px] font-bold transition-transform active:scale-[0.96]"
+            >
+              <Upload className="h-4 w-4" strokeWidth={2.4} />
+              Impor
+            </button>
+            <button
+              onClick={() => { setEditRumah(null); setRumahDrawer(true); }}
+              className="flex items-center gap-1.5 rounded-xl bg-primary px-3.5 py-2.5 text-[13px] font-bold text-primary-foreground transition-transform active:scale-[0.96]"
+            >
+              <Plus className="h-4 w-4" strokeWidth={2.5} />
+              Tambah
+            </button>
+          </>
         }
       />
 
@@ -325,6 +401,97 @@ export default function AdminWarga() {
         </form>
       </BottomDrawer>
 
+      {/* Drawer Impor CSV */}
+      <BottomDrawer
+        open={importOpen}
+        onOpenChange={(open) => {
+          setImportOpen(open);
+          if (!open) resetImport();
+        }}
+        title="Impor Data Warga"
+      >
+        <div className="flex flex-col gap-3.5">
+          <div className="rounded-[14px] border border-border/60 bg-muted/30 p-3.5">
+            <div className="text-[12.5px] font-bold">1. Siapkan file CSV</div>
+            <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
+              Satu baris = satu anggota keluarga. Nomor rumah harus sudah terdaftar;
+              impor hanya menambah anggota baru, bukan membuat rumah baru.
+            </p>
+            <button
+              type="button"
+              onClick={handleDownloadTemplate}
+              className="mt-2.5 flex items-center gap-1.5 rounded-[10px] bg-card px-2.5 py-2 text-[12px] font-bold shadow-sm transition-transform active:scale-[0.96]"
+            >
+              <Download className="h-3.5 w-3.5" strokeWidth={2.4} />
+              Unduh template
+            </button>
+          </div>
+
+          <label className="flex cursor-pointer flex-col items-center gap-1.5 rounded-[14px] border border-dashed border-border/70 px-3 py-6 text-center">
+            <FileSpreadsheet className="h-7 w-7 text-muted-foreground/60" strokeWidth={1.8} />
+            <span className="text-[12.5px] font-bold">
+              {readingFile ? "Membaca file..." : importFileName || "Pilih file .csv"}
+            </span>
+            <span className="text-[11px] text-muted-foreground">
+              Maksimal 2 MB · pemisah koma atau titik koma
+            </span>
+            <input
+              type="file"
+              accept=".csv,text/csv"
+              className="hidden"
+              onChange={(e) => handleImportFile(e.target.files?.[0] ?? null)}
+            />
+          </label>
+
+          {importPreview?.fatal && (
+            <div className="rounded-[12px] bg-destructive/10 px-3 py-2.5 text-[12px] font-medium leading-relaxed text-destructive">
+              {importPreview.fatal}
+            </div>
+          )}
+
+          {importPreview && !importPreview.fatal && (
+            <>
+              <div className="flex flex-wrap gap-1.5">
+                <SummaryChip tone="ok">{importPreview.okCount} siap diimpor</SummaryChip>
+                <SummaryChip tone="skip">{importPreview.skipCount} dilewati</SummaryChip>
+                <SummaryChip tone="error">{importPreview.errorCount} error</SummaryChip>
+              </div>
+
+              {importPreview.rows.length === 0 ? (
+                <p className="rounded-[12px] border border-dashed border-border/60 px-3 py-4 text-center text-[12px] text-muted-foreground">
+                  Tidak ada baris data di file.
+                </p>
+              ) : (
+                <div className="flex max-h-72 flex-col gap-1.5 overflow-y-auto pr-0.5">
+                  {importPreview.rows.slice(0, 200).map((row) => (
+                    <ImportRowItem key={row.line} row={row} />
+                  ))}
+                </div>
+              )}
+
+              {importPreview.rows.length > 200 && (
+                <p className="text-[11px] text-muted-foreground">
+                  Menampilkan 200 baris pertama dari {importPreview.total} baris.
+                </p>
+              )}
+
+              <button
+                type="button"
+                onClick={handleImportSubmit}
+                disabled={importPreview.okCount === 0 || importWarga.isPending}
+                className="mt-1 w-full rounded-xl bg-primary py-3 text-[14px] font-bold text-primary-foreground transition-transform active:scale-[0.98] disabled:opacity-60"
+              >
+                {importWarga.isPending
+                  ? "Mengimpor..."
+                  : importPreview.okCount === 0
+                    ? "Tidak ada baris yang bisa diimpor"
+                    : `Impor ${importPreview.okCount} anggota`}
+              </button>
+            </>
+          )}
+        </div>
+      </BottomDrawer>
+
       {/* Confirm Delete */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>
@@ -344,6 +511,44 @@ export default function AdminWarga() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+  );
+}
+
+function SummaryChip({ tone, children }: { tone: ImportRow["status"]; children: React.ReactNode }) {
+  const cls =
+    tone === "ok"
+      ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+      : tone === "skip"
+        ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+        : "bg-destructive/10 text-destructive";
+  return (
+    <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${cls}`}>{children}</span>
+  );
+}
+
+function ImportRowItem({ row }: { row: ImportRow }) {
+  const Icon = row.status === "ok" ? CheckCircle2 : row.status === "skip" ? AlertTriangle : XCircle;
+  const tone =
+    row.status === "ok"
+      ? "text-emerald-600 dark:text-emerald-400"
+      : row.status === "skip"
+        ? "text-amber-600 dark:text-amber-400"
+        : "text-destructive";
+  return (
+    <div className="flex items-start gap-2 rounded-[10px] bg-muted/40 px-2.5 py-2">
+      <Icon className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${tone}`} strokeWidth={2.2} />
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-baseline gap-x-1.5">
+          <span className="max-w-full truncate text-[12px] font-bold">{row.nama || "(tanpa nama)"}</span>
+          <span className="text-[10.5px] font-medium text-muted-foreground">
+            Rumah {row.noRumah || "-"} · baris {row.line}
+          </span>
+        </div>
+        {row.messages.length > 0 && (
+          <div className={`mt-0.5 text-[11px] leading-snug ${tone}`}>{row.messages.join(" ")}</div>
+        )}
+      </div>
     </div>
   );
 }
