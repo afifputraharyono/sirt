@@ -92,8 +92,9 @@ const MULAI_KEWAJIBAN: Partial<Record<TipeTagihan, number | null>> = {
 };
 
 // Rumah yang baru ditempati setelah kas berjalan punya mulai_kas_ibu lebih
-// lambat dari aturan global. Tanggal tahun lalu tetap ikut aturan global;
-// tanggal tahun berjalan menunda kewajiban sampai bulan tersebut.
+// lambat dari aturan global. Tanggal tahun berjalan menunda kewajiban sampai
+// bulan tersebut; bila mulai_kas_ibu di tahun sebelumnya, kewajiban berlanjut
+// sejak Januari tahun berjalan (bukan kembali ke aturan global Agustus).
 function awalKasIbu(
   globalAwal: number | null,
   mulaiKasIbu: string | null,
@@ -102,7 +103,7 @@ function awalKasIbu(
   if (globalAwal == null || !mulaiKasIbu) return globalAwal;
   const [tahunMulai, bulanMulai] = mulaiKasIbu.split("-").map(Number);
   if (!tahunMulai || !bulanMulai) return globalAwal;
-  if (tahunMulai < tahun) return globalAwal;
+  if (tahunMulai < tahun) return 1;
   if (tahunMulai > tahun) return null;
   return Math.max(globalAwal, bulanMulai);
 }
