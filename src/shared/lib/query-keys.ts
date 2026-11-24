@@ -8,6 +8,10 @@ export const queryKeys = {
       [...queryKeys.warga.lists(), filters] as const,
     details: () => [...queryKeys.warga.all, "detail"] as const,
     detail: (id: string) => [...queryKeys.warga.details(), id] as const,
+    me: () => [...queryKeys.warga.all, "me"] as const,
+    myKas: (rumahId: string, tahun: number) =>
+      [...queryKeys.warga.all, "me", "kas", rumahId, tahun] as const,
+    accounts: () => [...queryKeys.warga.all, "accounts"] as const,
   },
   kas: {
     all: ["kas"] as const,

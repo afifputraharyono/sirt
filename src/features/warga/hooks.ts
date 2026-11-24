@@ -9,9 +9,15 @@ import {
   createWarga,
   updateWarga,
   deleteWarga,
+  fetchKonteksWarga,
+  fetchKasSaya,
+  updateProfilSaya,
+  fetchAkunWarga,
+  setAkunWargaAnggota,
   type CreateRumahInput,
   type CreateWargaInput,
 } from "./services";
+import { useAuthStore } from "@/features/auth/store";
 import { toast } from "sonner";
 
 export function useRumahList() {
@@ -98,6 +104,84 @@ export function useDeleteWarga() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.warga.all });
       toast.success("Warga berhasil dinonaktifkan");
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
+
+// ==================== PORTAL WARGA ====================
+
+export function useKonteksWarga() {
+  const userId = useAuthStore((s) => s.user?.id ?? "anon");
+  return useQuery({
+    queryKey: [...queryKeys.warga.me(), userId],
+    queryFn: fetchKonteksWarga,
+    staleTime: 30_000,
+  });
+}
+
+export function useKasSaya(
+  rumahId: string | null | undefined,
+  tahun: number
+) {
+  return useQuery({
+    queryKey: queryKeys.warga.myKas(rumahId ?? "none", tahun),
+    queryFn: () => fetchKasSaya(rumahId as string, tahun),
+    enabled: !!rumahId,
+  });
+}
+
+export function useUpdateProfilSaya() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      ...input
+    }: {
+      id: string;
+      nama_tampilan: string;
+      no_hp: string | null;
+    }) => updateProfilSaya(id, input),
+    onSuccess: (data) => {
+      const user = useAuthStore.getState().user;
+      if (user) {
+        useAuthStore.setState({
+          user: {
+            ...user,
+            nama_tampilan: data.nama_tampilan,
+            no_hp: data.no_hp,
+          },
+        });
+      }
+      qc.invalidateQueries({ queryKey: queryKeys.warga.all });
+      toast.success("Profil berhasil diperbarui");
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
+
+// ==================== ADMIN: AKUN WARGA ====================
+
+export function useAkunWarga() {
+  return useQuery({
+    queryKey: queryKeys.warga.accounts(),
+    queryFn: fetchAkunWarga,
+  });
+}
+
+export function useSetAkunWargaAnggota() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      akunId,
+      wargaId,
+    }: {
+      akunId: string;
+      wargaId: string | null;
+    }) => setAkunWargaAnggota(akunId, wargaId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.warga.all });
+      toast.success("Akun warga berhasil diperbarui");
     },
     onError: (err: Error) => toast.error(err.message),
   });

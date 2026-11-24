@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 const PublicLayout = lazy(() => import("@/app/routes/_layout.public"));
 const AdminLayout = lazy(() => import("@/app/routes/_layout.admin"));
 const RondaLayout = lazy(() => import("@/app/routes/_layout.ronda"));
+const WargaLayout = lazy(() => import("@/app/routes/_layout.warga"));
 
 const BerandaPublik = lazy(() => import("@/app/routes/index"));
 const LoginPage = lazy(() => import("@/app/routes/login"));
@@ -16,6 +17,7 @@ const NotFound = lazy(() => import("@/app/routes/not-found"));
 
 const AdminDashboard = lazy(() => import("@/app/routes/admin.dashboard"));
 const AdminWarga = lazy(() => import("@/app/routes/admin.warga"));
+const AdminAkunWarga = lazy(() => import("@/app/routes/admin.akun-warga"));
 const AdminKeuangan = lazy(() => import("@/app/routes/admin.keuangan"));
 const AdminRonda = lazy(() => import("@/app/routes/admin.ronda"));
 const AdminSurat = lazy(() => import("@/app/routes/admin.surat"));
@@ -25,6 +27,10 @@ const AdminPengaturan = lazy(() => import("@/app/routes/admin.pengaturan"));
 
 const RondaJimpitan = lazy(() => import("@/app/routes/ronda.jimpitan"));
 const RondaJadwal = lazy(() => import("@/app/routes/ronda.jadwal"));
+
+const WargaDashboard = lazy(() => import("@/app/routes/warga.dashboard"));
+const WargaTagihan = lazy(() => import("@/app/routes/warga.tagihan"));
+const WargaProfil = lazy(() => import("@/app/routes/warga.profil"));
 
 function PageLoader() {
   return (
@@ -55,6 +61,21 @@ export const router = createBrowserRouter([
     ],
   },
   {
+    path: "warga",
+    element: (
+      <AuthGuard minRole="warga">
+        <S>
+          <WargaLayout />
+        </S>
+      </AuthGuard>
+    ),
+    children: [
+      { index: true, element: <S><WargaDashboard /></S> },
+      { path: "tagihan", element: <S><WargaTagihan /></S> },
+      { path: "profil", element: <S><WargaProfil /></S> },
+    ],
+  },
+  {
     path: "admin",
     element: (
       <AuthGuard minRole="admin">
@@ -66,6 +87,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <S><AdminDashboard /></S> },
       { path: "warga", element: <S><AdminWarga /></S> },
+      { path: "akun-warga", element: <S><AdminAkunWarga /></S> },
       { path: "keuangan", element: <Navigate to="/admin/keuangan/bapak" replace /> },
       { path: "keuangan/bapak", element: <S><AdminKeuangan /></S> },
       { path: "keuangan/ibu", element: <S><AdminKeuangan /></S> },

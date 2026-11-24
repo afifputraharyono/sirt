@@ -1,5 +1,6 @@
 import { Navigate, useLocation } from "react-router-dom";
 import type { Role } from "@/features/auth/types";
+import { dashboardPathFor } from "@/features/auth/dashboard-path";
 import { useRequireRole } from "@/features/auth/hooks/useRequireRole";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -10,7 +11,7 @@ interface AuthGuardProps {
 
 export function AuthGuard({ minRole, children }: AuthGuardProps) {
   const location = useLocation();
-  const { user, isLoading, initialized, hasAccess } = useRequireRole(minRole);
+  const { user, role, isLoading, initialized, hasAccess } = useRequireRole(minRole);
 
   if (!initialized || isLoading) {
     return (
@@ -29,7 +30,7 @@ export function AuthGuard({ minRole, children }: AuthGuardProps) {
   }
 
   if (!hasAccess) {
-    return <Navigate to="/" replace />;
+    return <Navigate to={dashboardPathFor(role)} replace />;
   }
 
   return <>{children}</>;

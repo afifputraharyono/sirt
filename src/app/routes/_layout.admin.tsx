@@ -3,6 +3,7 @@ import { Outlet, Link, useLocation } from "react-router-dom";
 import {
   Home,
   Users,
+  UserCog,
   Wallet,
   Shield,
   FileText,
@@ -30,6 +31,7 @@ type NavItem = {
 const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", href: "/admin", icon: Home },
   { label: "Warga", href: "/admin/warga", icon: Users },
+  { label: "Akun Warga", href: "/admin/akun-warga", icon: UserCog },
   {
     label: "Keuangan",
     icon: Wallet,

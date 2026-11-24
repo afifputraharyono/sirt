@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { z } from "zod/v4";
 import { useAuthStore } from "@/features/auth/store";
+import { dashboardPathFor } from "@/features/auth/dashboard-path";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,6 +20,7 @@ type LoginForm = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const login = useAuthStore((s) => s.login);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,15 +35,11 @@ export default function LoginPage() {
       setError(null);
       const parsed = loginSchema.parse(data);
       const result = await login(parsed.email, parsed.password);
-      let navigateTo = "/admin";
-
-      if (result.role === "warga") {
-        navigateTo = "/warga";
-      } else if (result.role === "admin") {
-        navigateTo = "/admin";
-      } else if (result.role === "ronda") {
-        navigateTo = "/ronda";
-      }
+      const from = (
+        location.state as { from?: { pathname?: string } } | null
+      )?.from?.pathname;
+      const navigateTo =
+        from && from !== "/login" ? from : dashboardPathFor(result.role);
 
       navigate(navigateTo, { replace: true });
     } catch (err) {

@@ -1,6 +1,7 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { Home, Shield, Megaphone, LogIn, Wallet } from "lucide-react";
 import { useAuthStore } from "@/features/auth/store";
+import { dashboardPathFor } from "@/features/auth/dashboard-path";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/shared/components/layout/ThemeToggle";
 import { RT_CONFIG } from "@/shared/lib/constants";
@@ -11,12 +12,6 @@ const NAV_ITEMS = [
   { to: "/pengumuman", label: "Pengumuman", icon: Megaphone },
   { to: "/keuangan", label: "Keuangan", icon: Wallet },
 ] as const;
-
-function getDashboardPath(role: string) {
-  if (role === "admin") return "/admin";
-  if (role === "ronda") return "/ronda";
-  return "/";
-}
 
 export default function PublicLayout() {
   const { pathname } = useLocation();
@@ -42,7 +37,7 @@ export default function PublicLayout() {
           <div className="flex items-center gap-2">
             <ThemeToggle />
             {user ? (
-              <Link to={getDashboardPath(user.role)}>
+              <Link to={dashboardPathFor(user.role)}>
                 <Avatar className="h-[34px] w-[34px]">
                   <AvatarFallback className="bg-primary text-xs font-bold text-primary-foreground">
                     {user.nama_tampilan
