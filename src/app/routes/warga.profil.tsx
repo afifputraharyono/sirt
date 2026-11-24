@@ -115,6 +115,14 @@ export default function WargaProfil() {
             </div>
           </FormField>
 
+          <FormField label="Username">
+            <input
+              value={ctx.profil.username ?? "Belum diatur"}
+              disabled
+              className={READONLY_CLASS}
+            />
+          </FormField>
+
           <FormField label="Role">
             <input value="Warga" disabled className={READONLY_CLASS} />
           </FormField>

@@ -13,7 +13,8 @@ import {
   fetchKasSaya,
   updateProfilSaya,
   fetchAkunWarga,
-  setAkunWargaAnggota,
+  updateAkunWarga,
+  type AkunWargaUpdate,
   type CreateRumahInput,
   type CreateWargaInput,
 } from "./services";
@@ -174,15 +175,19 @@ export function useSetAkunWargaAnggota() {
   return useMutation({
     mutationFn: ({
       akunId,
-      wargaId,
-    }: {
-      akunId: string;
-      wargaId: string | null;
-    }) => setAkunWargaAnggota(akunId, wargaId),
+      ...input
+    }: { akunId: string } & AkunWargaUpdate) => updateAkunWarga(akunId, input),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.warga.all });
       toast.success("Akun warga berhasil diperbarui");
     },
-    onError: (err: Error) => toast.error(err.message),
+    onError: (err: Error) => {
+      const pesan =
+        err.message.includes("duplicate key") ||
+        err.message.includes("profil_pengguna_username_unik")
+          ? "Username sudah dipakai akun lain"
+          : err.message;
+      toast.error(pesan);
+    },
   });
 }

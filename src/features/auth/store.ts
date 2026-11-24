@@ -8,7 +8,7 @@ interface AuthState {
   isLoading: boolean;
   initialized: boolean;
 
-  login: (email: string, password: string) => Promise<AuthUser>;
+  login: (identifier: string, password: string) => Promise<AuthUser>;
   logout: () => Promise<void>;
   initialize: () => Promise<void>;
 }
@@ -50,15 +50,31 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
 
-  login: async (email: string, password: string) => {
+  login: async (identifier: string, password: string) => {
     set({ isLoading: true });
     try {
+      let email = identifier.trim();
+      if (!email.includes("@")) {
+        const { data: resolved, error: resolveError } = await supabase.rpc(
+          "fn_login_email",
+          { p_username: email.toLowerCase() }
+        );
+        if (resolveError) throw resolveError;
+        if (!resolved) throw new Error("Username atau password salah");
+        email = String(resolved);
+      }
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (error) throw error;
+      if (error) {
+        if (error.status === 400) {
+          throw new Error("Username atau password salah");
+        }
+        throw error;
+      }
 
       const { data: profile } = await supabase
         .from("profil_pengguna")

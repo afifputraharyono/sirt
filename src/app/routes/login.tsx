@@ -12,7 +12,11 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, Loader2 } from "lucide-react";
 
 const loginSchema = z.object({
-  email: z.email("Email tidak valid"),
+  identifier: z
+    .string()
+    .trim()
+    .min(2, "Username wajib diisi")
+    .max(100, "Username terlalu panjang"),
   password: z.string().min(8, "Password minimal 8 karakter"),
 });
 
@@ -34,7 +38,7 @@ export default function LoginPage() {
     try {
       setError(null);
       const parsed = loginSchema.parse(data);
-      const result = await login(parsed.email, parsed.password);
+      const result = await login(parsed.identifier, parsed.password);
       const from = (
         location.state as { from?: { pathname?: string } } | null
       )?.from?.pathname;
@@ -68,16 +72,19 @@ export default function LoginPage() {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="identifier">Username</Label>
               <Input
-                id="email"
-                type="email"
-                placeholder="email@wonoyoso.com"
-                {...register("email", { required: "Email wajib diisi" })}
+                id="identifier"
+                type="text"
+                autoComplete="username"
+                autoCapitalize="none"
+                spellCheck={false}
+                placeholder="Contoh: a30-siti"
+                {...register("identifier", { required: "Username wajib diisi" })}
               />
-              {errors.email && (
+              {errors.identifier && (
                 <p className="text-xs text-destructive">
-                  {errors.email.message}
+                  {errors.identifier.message}
                 </p>
               )}
             </div>

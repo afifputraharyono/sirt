@@ -9,10 +9,13 @@ import {
   useSetAkunWargaAnggota,
 } from "@/features/warga/hooks";
 import type { AkunWarga } from "@/features/warga/services";
+import { saranUsername } from "@/features/warga/services";
 import { formatTanggalPendek } from "@/shared/utils/format";
 
 const SELECT_CLASS =
   "flex h-10 w-full rounded-[11px] border border-input bg-background px-3 py-2 text-[13.5px]";
+
+const USERNAME_PATTERN = /^[a-z0-9][a-z0-9-]{1,29}$/;
 
 function FormField({
   label,
@@ -48,6 +51,8 @@ export default function AdminAkunWarga() {
   const [target, setTarget] = useState<AkunWarga | null>(null);
   const [rumahId, setRumahId] = useState("");
   const [wargaId, setWargaId] = useState("");
+  const [username, setUsername] = useState("");
+  const usernameValid = USERNAME_PATTERN.test(username);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -55,7 +60,7 @@ export default function AdminAkunWarga() {
     return (akunList ?? []).filter((a) => {
       const noRumah = a.warga_detail?.rumah_kk?.no_rumah ?? "";
       const namaAnggota = a.warga_detail?.nama_lengkap ?? "";
-      return [a.nama_tampilan, namaAnggota, noRumah]
+      return [a.nama_tampilan, a.username ?? "", namaAnggota, noRumah]
         .join(" ")
         .toLowerCase()
         .includes(q);
@@ -70,6 +75,7 @@ export default function AdminAkunWarga() {
   const openDrawer = (akun: AkunWarga) => {
     setTarget(akun);
     setWargaId(akun.warga_id ?? "");
+    setUsername(akun.username ?? "");
     const rumah = rumahList?.find(
       (r) => r.no_rumah === akun.warga_detail?.rumah_kk?.no_rumah
     );
@@ -78,9 +84,13 @@ export default function AdminAkunWarga() {
   };
 
   const handleSave = () => {
-    if (!target || !wargaId) return;
+    if (!target || !wargaId || !usernameValid) return;
     setAnggota.mutate(
-      { akunId: target.id, wargaId },
+      {
+        akunId: target.id,
+        warga_id: wargaId,
+        username: username.trim().toLowerCase(),
+      },
       { onSuccess: () => setDrawerOpen(false) }
     );
   };
@@ -88,7 +98,7 @@ export default function AdminAkunWarga() {
   const handleUnlink = () => {
     if (!target) return;
     setAnggota.mutate(
-      { akunId: target.id, wargaId: null },
+      { akunId: target.id, warga_id: null },
       { onSuccess: () => setDrawerOpen(false) }
     );
   };
@@ -114,8 +124,9 @@ export default function AdminAkunWarga() {
       </div>
 
       <p className="text-[11.5px] leading-relaxed text-muted-foreground">
-        Akun dibuat melalui Supabase Auth, lalu ditautkan di sini. Daftar
-        menampilkan nama akun karena email hanya tersedia di Supabase.
+        Buat akun di Supabase Auth dengan email{" "}
+        <span className="font-semibold">username@sirt.local</span>, lalu atur
+        username di sini. Warga masuk memakai username; email tidak ditampilkan.
       </p>
 
       {isLoading ? (
@@ -164,11 +175,12 @@ export default function AdminAkunWarga() {
                     )}
                   </div>
                   <p className="mt-0.5 truncate text-[12px] text-muted-foreground">
+                    {akun.username ? `@${akun.username}` : "Username belum diatur"}
                     {tertaut
-                      ? `Rumah ${rumah ?? "?"} · ${akun.warga_detail?.nama_lengkap}`
+                      ? ` · Rumah ${rumah ?? "?"} · ${akun.warga_detail?.nama_lengkap}`
                       : akun.no_hp
-                        ? `No. HP ${akun.no_hp}`
-                        : `Dibuat ${formatTanggalPendek(akun.created_at)}`}
+                        ? ` · No. HP ${akun.no_hp}`
+                        : ` · Dibuat ${formatTanggalPendek(akun.created_at)}`}
                   </p>
                 </div>
                 <span className="shrink-0 text-[12px] font-bold text-primary">
@@ -192,6 +204,7 @@ export default function AdminAkunWarga() {
               onChange={(e) => {
                 setRumahId(e.target.value);
                 setWargaId("");
+                setUsername("");
               }}
               className={SELECT_CLASS}
             >
@@ -207,7 +220,16 @@ export default function AdminAkunWarga() {
           <FormField label="Anggota Keluarga">
             <select
               value={wargaId}
-              onChange={(e) => setWargaId(e.target.value)}
+              onChange={(e) => {
+                const id = e.target.value;
+                setWargaId(id);
+                const anggota = anggotaRumah.find((w) => w.id === id);
+                const noRumah =
+                  rumahList?.find((r) => r.id === rumahId)?.no_rumah ?? "";
+                setUsername(
+                  anggota ? saranUsername(noRumah, anggota.nama_lengkap) : ""
+                );
+              }}
               disabled={!rumahId}
               className={SELECT_CLASS + " disabled:opacity-60"}
             >
@@ -226,10 +248,30 @@ export default function AdminAkunWarga() {
             )}
           </FormField>
 
+          <FormField label="Username">
+            <input
+              value={username}
+              onChange={(e) => setUsername(e.target.value.toLowerCase())}
+              placeholder="a30-nama"
+              maxLength={30}
+              autoCapitalize="none"
+              spellCheck={false}
+              className={SELECT_CLASS}
+            />
+            <p className="text-[11.5px] text-muted-foreground">
+              Dipakai untuk login. Huruf kecil, angka, dan tanda hubung.
+            </p>
+            {username.length > 0 && !usernameValid && (
+              <p className="text-[11.5px] text-destructive">
+                Format username tidak valid (2–30 karakter, contoh a30-siti).
+              </p>
+            )}
+          </FormField>
+
           <button
             type="button"
             onClick={handleSave}
-            disabled={!wargaId || setAnggota.isPending}
+            disabled={!wargaId || !usernameValid || setAnggota.isPending}
             className="mt-1 w-full rounded-xl bg-primary py-3 text-[14px] font-bold text-primary-foreground transition-transform active:scale-[0.98] disabled:opacity-60"
           >
             {setAnggota.isPending ? "Menyimpan..." : "Simpan Tautan"}

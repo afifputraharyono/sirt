@@ -132,6 +132,7 @@ export async function deleteWarga(id: string) {
 export interface ProfilSaya {
   id: string;
   nama_tampilan: string;
+  username: string | null;
   no_hp: string | null;
   role: Role;
   is_active: boolean;
@@ -181,7 +182,7 @@ export async function fetchKonteksWarga(): Promise<KonteksWarga> {
 
   const { data: profil, error: profilError } = await supabase
     .from("profil_pengguna")
-    .select("id, nama_tampilan, no_hp, role, is_active, warga_id")
+    .select("id, nama_tampilan, username, no_hp, role, is_active, warga_id")
     .eq("id", user.id)
     .single();
   if (profilError) throw profilError;
@@ -266,6 +267,7 @@ export async function updateProfilSaya(
 export interface AkunWarga {
   id: string;
   nama_tampilan: string;
+  username: string | null;
   no_hp: string | null;
   is_active: boolean;
   warga_id: string | null;
@@ -296,7 +298,7 @@ export async function fetchAkunWarga(): Promise<AkunWarga[]> {
   const { data, error } = await supabase
     .from("profil_pengguna")
     .select(
-      "id, nama_tampilan, no_hp, is_active, warga_id, created_at, warga_detail(nama_lengkap, hubungan_keluarga, rumah_kk(no_rumah))"
+      "id, nama_tampilan, username, no_hp, is_active, warga_id, created_at, warga_detail(nama_lengkap, hubungan_keluarga, rumah_kk(no_rumah))"
     )
     .eq("role", "warga")
     .order("created_at", { ascending: false });
@@ -318,13 +320,34 @@ export async function fetchAkunWarga(): Promise<AkunWarga[]> {
   });
 }
 
-export async function setAkunWargaAnggota(
+export interface AkunWargaUpdate {
+  warga_id?: string | null;
+  username?: string | null;
+}
+
+export async function updateAkunWarga(
   akunId: string,
-  wargaId: string | null
+  input: AkunWargaUpdate
 ) {
   const { error } = await supabase
     .from("profil_pengguna")
-    .update({ warga_id: wargaId })
+    .update(input)
     .eq("id", akunId);
   if (error) throw error;
+}
+
+// Username = nomor rumah + nama depan anggota, mis. "a30-siti".
+export function saranUsername(noRumah: string, namaLengkap: string): string {
+  const slug = (value: string) =>
+    value
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+  const namaDepan = namaLengkap.trim().split(/\s+/)[0] ?? "";
+  return [slug(noRumah), slug(namaDepan)]
+    .filter(Boolean)
+    .join("-")
+    .slice(0, 30);
 }
