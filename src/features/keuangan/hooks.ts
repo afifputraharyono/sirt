@@ -7,6 +7,7 @@ import {
   createKas,
   updateKas,
   deleteKas,
+  upsertKasBatch,
   fetchJimpitanByDate,
   fetchJimpitanSummary,
   createJimpitan,
@@ -79,6 +80,18 @@ export function useDeleteKas() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.kas.all });
       toast.success("Data kas berhasil dihapus");
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
+
+export function useUpsertKasBatch() {
+  return useOfflineMutation({
+    offlineKey: "kas:upsert-batch",
+    mutationFn: (items: CreateKasInput[]) => upsertKasBatch(items),
+    queryKeyToInvalidate: queryKeys.kas.all,
+    onSuccess: () => {
+      toast.success("Pembayaran berhasil dicatat");
     },
     onError: (err: Error) => toast.error(err.message),
   });

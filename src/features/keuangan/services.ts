@@ -66,6 +66,15 @@ export async function updateKas(id: string, input: Partial<CreateKasInput>) {
   return data as KasBulanan;
 }
 
+export async function upsertKasBatch(items: CreateKasInput[]) {
+  const { data, error } = await supabase
+    .from("kas_bulanan")
+    .upsert(items, { onConflict: "rumah_id,tipe_kas,bulan,tahun" })
+    .select();
+  if (error) throw error;
+  return data as KasBulanan[];
+}
+
 export async function deleteKas(id: string) {
   const { error } = await supabase.from("kas_bulanan").delete().eq("id", id);
   if (error) throw error;

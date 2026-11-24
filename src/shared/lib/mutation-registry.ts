@@ -1,6 +1,7 @@
 import {
   createKas,
   updateKas,
+  upsertKasBatch,
   createJimpitan,
   updateJimpitan,
   upsertJimpitanBatch,
@@ -18,6 +19,7 @@ import {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const mutationRegistry: Record<string, (vars: any) => Promise<any>> = {
   "kas:create": (vars: CreateKasInput) => createKas(vars),
+  "kas:upsert-batch": (vars: CreateKasInput[]) => upsertKasBatch(vars),
   "kas:update": ({ id, ...input }: { id: string } & Partial<CreateKasInput>) =>
     updateKas(id, input),
   "jimpitan:create": (vars: CreateJimpitanInput) => createJimpitan(vars),

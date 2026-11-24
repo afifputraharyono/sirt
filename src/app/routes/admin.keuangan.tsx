@@ -22,6 +22,7 @@ import {
 import { useRumahList } from "@/features/warga/hooks";
 import { useAuthStore } from "@/features/auth/store";
 import { ArisanPutaranTab } from "@/features/keuangan/components/ArisanPutaranTab";
+import { IbuArisanTab } from "@/features/keuangan/components/IbuArisanTab";
 import type { TipeKas, KategoriPengeluaran, StatusJimpitan, SumberDana } from "@/shared/types/database";
 import type { JimpitanWithRumah, PengeluaranWithGrup } from "@/features/keuangan/services";
 import { formatRupiah, formatTanggalPendek } from "@/shared/utils/format";
@@ -42,8 +43,6 @@ interface ModeConfig {
   kasTipe: TipeKas;
   kasNominal: number;
   kasLabel: string;
-  secondTabKey: string;
-  secondTabLabel: string;
   sumberDana: SumberDana[];
   saldoCards: (saldo: ReturnType<typeof useSaldoKas>["data"]) => { title: string; value: number }[];
 }
@@ -55,8 +54,6 @@ const MODE_CONFIGS: Record<PageMode, ModeConfig> = {
     kasTipe: "Bapak",
     kasNominal: RT_CONFIG.nominal_kas_bulanan_bapak,
     kasLabel: "Kas Bapak",
-    secondTabKey: "jimpitan",
-    secondTabLabel: "Jimpitan",
     sumberDana: ["Kas Bapak", "Jimpitan"],
     saldoCards: (saldo) => [
       { title: "Kas Bapak", value: (saldo?.kas_bapak_masuk ?? 0) - (saldo?.pengeluaran_kas_bapak ?? 0) },
@@ -69,8 +66,6 @@ const MODE_CONFIGS: Record<PageMode, ModeConfig> = {
     kasTipe: "Ibu",
     kasNominal: RT_CONFIG.nominal_kas_bulanan_ibu,
     kasLabel: "Kas Ibu",
-    secondTabKey: "arisan",
-    secondTabLabel: "Arisan",
     sumberDana: ["Kas Ibu", "Arisan"],
     saldoCards: (saldo) => [
       { title: "Kas Ibu", value: (saldo?.kas_ibu_masuk ?? 0) - (saldo?.pengeluaran_kas_ibu ?? 0) },
@@ -86,12 +81,17 @@ export default function AdminKeuangan() {
   const mode: PageMode = location.pathname.includes("/ibu") ? "ibu" : "bapak";
   const config = MODE_CONFIGS[mode];
 
-  const tabs = [
-    { key: "kas", label: config.kasLabel },
-    { key: config.secondTabKey, label: config.secondTabLabel },
-    ...(mode === "ibu" ? [{ key: "putaran", label: "Putaran" }] : []),
-    { key: "pengeluaran", label: "Pengeluaran" },
-  ];
+  const tabs = mode === "ibu"
+    ? [
+        { key: "kas", label: "Ibu & Arisan" },
+        { key: "putaran", label: "Putaran" },
+        { key: "pengeluaran", label: "Pengeluaran" },
+      ]
+    : [
+        { key: "kas", label: config.kasLabel },
+        { key: "jimpitan", label: "Jimpitan" },
+        { key: "pengeluaran", label: "Pengeluaran" },
+      ];
 
   const [tab, setTab] = useState<string>("kas");
   const [bulan, setBulan] = useState(now.getMonth() + 1);
@@ -199,13 +199,10 @@ export default function AdminKeuangan() {
       </div>
 
       {/* Tab content */}
-      {tab === "kas" && (
-        <KasTab tipe={config.kasTipe} bulan={bulan} tahun={tahun} nominal={config.kasNominal} withArisan={mode === "ibu"} />
-      )}
-      {tab === "jimpitan" && <JimpitanTab bulan={bulan} tahun={tahun} />}
-      {tab === "arisan" && (
-        <KasTab tipe="Arisan" bulan={bulan} tahun={tahun} nominal={RT_CONFIG.nominal_arisan} optional />
-      )}
+      {tab === "kas" && (mode === "ibu"
+        ? <IbuArisanTab bulan={bulan} tahun={tahun} />
+        : <KasTab tipe={config.kasTipe} bulan={bulan} tahun={tahun} nominal={config.kasNominal} />)}
+      {tab === "jimpitan" && mode === "bapak" && <JimpitanTab bulan={bulan} tahun={tahun} />}
       {tab === "putaran" && mode === "ibu" && (
         <ArisanPutaranTab bulan={bulan} tahun={tahun} />
       )}
@@ -236,9 +233,8 @@ function AddButton({ label, onClick }: { label: string; onClick: () => void }) {
   );
 }
 
-function KasTab({ tipe, bulan, tahun, nominal, optional, withArisan }: { tipe: TipeKas; bulan: number; tahun: number; nominal: number; optional?: boolean; withArisan?: boolean }) {
+function KasTab({ tipe, bulan, tahun, nominal }: { tipe: TipeKas; bulan: number; tahun: number; nominal: number }) {
   const { data: kasList, isLoading } = useKasByMonth(tipe, bulan, tahun);
-  const { data: arisanList } = useKasByMonth("Arisan", bulan, tahun);
   const { data: rumahList } = useRumahList();
   const createKas = useCreateKas();
   const deleteKas = useDeleteKas();
@@ -246,7 +242,6 @@ function KasTab({ tipe, bulan, tahun, nominal, optional, withArisan }: { tipe: T
 
   const [drawer, setDrawer] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [selectedRumahId, setSelectedRumahId] = useState("");
   const [showRange, setShowRange] = useState(false);
   const [dari, setDari] = useState(() => {
     const d = new Date();
@@ -263,7 +258,6 @@ function KasTab({ tipe, bulan, tahun, nominal, optional, withArisan }: { tipe: T
     const tanggalBayar = fd.get("tanggal_bayar") as string;
     const metodeBayar = (fd.get("metode_bayar") as string) || null;
     const keterangan = (fd.get("keterangan") as string) || null;
-    const bayarArisan = withArisan && fd.get("bayar_arisan") === "on";
 
     createKas.mutate({
       rumah_id: rumahId,
@@ -276,36 +270,12 @@ function KasTab({ tipe, bulan, tahun, nominal, optional, withArisan }: { tipe: T
       metode_bayar: metodeBayar,
       keterangan,
       dicatat_oleh: user?.id ?? "",
-    }, {
-      onSuccess: () => {
-        if (bayarArisan) {
-          createKas.mutate({
-            rumah_id: rumahId,
-            tipe_kas: "Arisan",
-            bulan,
-            tahun,
-            jumlah: RT_CONFIG.nominal_arisan,
-            status_bayar: true,
-            tanggal_bayar: tanggalBayar,
-            metode_bayar: metodeBayar,
-            keterangan,
-            dicatat_oleh: user?.id ?? "",
-          }, { onSuccess: () => { setDrawer(false); setSelectedRumahId(""); } });
-        } else {
-          setDrawer(false);
-          setSelectedRumahId("");
-        }
-      },
-    });
+    }, { onSuccess: () => setDrawer(false) });
   };
 
   const activeRumah = rumahList?.filter((r) => r.is_active && r.status_hunian !== "Kosong") ?? [];
-  const pesertaArisan = activeRumah.filter((r) => r.ikut_arisan);
   const paidRumahIds = new Set(kasList?.map((k) => k.rumah_id));
-  const paidArisanIds = new Set(arisanList?.map((k) => k.rumah_id));
   const unpaidRumah = activeRumah.filter((r) => !paidRumahIds.has(r.id));
-  const selectedIsPeserta =
-    !!selectedRumahId && pesertaArisan.some((r) => r.id === selectedRumahId);
 
   const sortedKasList = useMemo(() => {
     if (!kasList) return [];
@@ -315,9 +285,9 @@ function KasTab({ tipe, bulan, tahun, nominal, optional, withArisan }: { tipe: T
   }, [kasList]);
 
   const paidCount = kasList?.length ?? 0;
-  const totalCount = optional ? paidCount : activeRumah.length;
+  const totalCount = activeRumah.length;
   const totalTerkumpul = kasList?.reduce((s, k) => s + k.jumlah, 0) ?? 0;
-  const totalExpected = optional ? totalTerkumpul : totalCount * nominal;
+  const totalExpected = totalCount * nominal;
   const totalKekurangan = totalExpected - totalTerkumpul;
 
   const rangeTotal = kasRange?.reduce((s, k) => s + k.jumlah, 0) ?? 0;
@@ -327,23 +297,21 @@ function KasTab({ tipe, bulan, tahun, nominal, optional, withArisan }: { tipe: T
   return (
     <SectionCard>
       {/* Summary bar */}
-      <div className={`mb-3 grid gap-2 text-center ${optional ? "grid-cols-2" : "grid-cols-3"}`}>
+      <div className="mb-3 grid grid-cols-3 gap-2 text-center">
         <div className="rounded-xl bg-emerald-500/10 p-2">
           <div className="font-mono text-[14px] font-extrabold text-emerald-600 dark:text-emerald-400">
-            {optional ? paidCount : `${paidCount}/${totalCount}`}
+            {paidCount}/{totalCount}
           </div>
-          <div className="text-[10px] text-muted-foreground">{optional ? "Rumah Bayar" : "Lunas"}</div>
+          <div className="text-[10px] text-muted-foreground">Lunas</div>
         </div>
         <div className="rounded-xl bg-primary/10 p-2">
           <div className="font-mono text-[14px] font-extrabold text-primary">{formatRupiah(totalTerkumpul)}</div>
           <div className="text-[10px] text-muted-foreground">Terkumpul</div>
         </div>
-        {!optional && (
-          <div className="rounded-xl bg-amber-500/10 p-2">
-            <div className="font-mono text-[14px] font-extrabold text-amber-600 dark:text-amber-400">{formatRupiah(totalKekurangan)}</div>
-            <div className="text-[10px] text-muted-foreground">Kekurangan</div>
-          </div>
-        )}
+        <div className="rounded-xl bg-amber-500/10 p-2">
+          <div className="font-mono text-[14px] font-extrabold text-amber-600 dark:text-amber-400">{formatRupiah(totalKekurangan)}</div>
+          <div className="text-[10px] text-muted-foreground">Kekurangan</div>
+        </div>
       </div>
 
       <div className="mb-3 flex items-center justify-between">
@@ -373,7 +341,7 @@ function KasTab({ tipe, bulan, tahun, nominal, optional, withArisan }: { tipe: T
               </div>
             </div>
           ))}
-          {!optional && unpaidRumah.map((r) => (
+          {unpaidRumah.map((r) => (
             <div key={r.id} className="flex items-center justify-between rounded-xl border border-dashed border-amber-500/40 bg-amber-500/5 px-3 py-2.5">
               <div>
                 <div className="text-[13px] font-bold text-amber-700 dark:text-amber-300">Rumah {r.no_rumah}</div>
@@ -382,7 +350,7 @@ function KasTab({ tipe, bulan, tahun, nominal, optional, withArisan }: { tipe: T
               <span className="rounded-full border border-amber-500/40 bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400">Belum Bayar</span>
             </div>
           ))}
-          {sortedKasList.length === 0 && (optional || unpaidRumah.length === 0) && (
+          {sortedKasList.length === 0 && unpaidRumah.length === 0 && (
             <p className="py-6 text-center text-[13px] text-muted-foreground">Belum ada data</p>
           )}
         </div>
@@ -422,12 +390,9 @@ function KasTab({ tipe, bulan, tahun, nominal, optional, withArisan }: { tipe: T
         <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
           <div className="flex flex-col gap-1.5">
             <Label className="text-[12.5px] font-bold">Rumah *</Label>
-            <select name="rumah_id" required className={SELECT_CLASS} value={selectedRumahId} onChange={(e) => setSelectedRumahId(e.target.value)}>
+            <select name="rumah_id" required className={SELECT_CLASS}>
               <option value="">Pilih rumah...</option>
-              {(optional
-                ? pesertaArisan.filter((r) => !paidRumahIds.has(r.id))
-                : unpaidRumah
-              ).map((r) => (
+              {unpaidRumah.map((r) => (
                 <option key={r.id} value={r.id}>Rumah {r.no_rumah}</option>
               ))}
             </select>
@@ -443,26 +408,6 @@ function KasTab({ tipe, bulan, tahun, nominal, optional, withArisan }: { tipe: T
               {METODE_BAYAR.map((m) => <option key={m} value={m}>{m}</option>)}
             </select>
           </div>
-          {withArisan && selectedIsPeserta && (
-            <label className={`flex items-center gap-2.5 rounded-[11px] border border-border/60 px-3 py-2.5 ${
-              paidArisanIds.has(selectedRumahId) ? "opacity-50" : ""
-            }`}>
-              <input
-                type="checkbox"
-                name="bayar_arisan"
-                defaultChecked
-                disabled={paidArisanIds.has(selectedRumahId)}
-                className="h-4 w-4 rounded border-border accent-primary"
-              />
-              <div>
-                <div className="text-[12.5px] font-bold">Sekalian bayar Arisan</div>
-                <div className="text-[11px] text-muted-foreground">{formatRupiah(RT_CONFIG.nominal_arisan)}/bulan</div>
-              </div>
-              {paidArisanIds.has(selectedRumahId) && (
-                <span className="ml-auto rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">Sudah Lunas</span>
-              )}
-            </label>
-          )}
           <div className="flex flex-col gap-1.5">
             <Label className="text-[12.5px] font-bold">Keterangan</Label>
             <Input name="keterangan" className="rounded-[11px]" />
