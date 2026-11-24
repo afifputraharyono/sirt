@@ -41,8 +41,11 @@ export default function LoginPage() {
       const result = await login(parsed.identifier, parsed.password);
       const from = (location.state as { from?: { pathname?: string } } | null)
         ?.from?.pathname;
-      const navigateTo =
-        from && from !== "/login" ? from : dashboardPathFor(result.role);
+      const navigateTo = result.must_change_password
+        ? "/warga/profil"
+        : from && from !== "/login"
+          ? from
+          : dashboardPathFor(result.role);
 
       navigate(navigateTo, { replace: true });
     } catch (err) {

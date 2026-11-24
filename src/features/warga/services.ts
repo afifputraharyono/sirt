@@ -105,18 +105,25 @@ export async function createWarga(input: CreateWargaInput) {
   return data as WargaDetail;
 }
 
+export type InsertedWarga = Pick<
+  WargaDetail,
+  "id" | "rumah_id" | "nama_lengkap" | "nik"
+>;
+
 // Insert bertahap agar payload tidak melebihi batas request Supabase.
-export async function bulkCreateWarga(inputs: CreateWargaInput[]) {
+export async function bulkCreateWarga(
+  inputs: CreateWargaInput[]
+): Promise<InsertedWarga[]> {
   const CHUNK = 200;
-  let inserted = 0;
+  const inserted: InsertedWarga[] = [];
   for (let i = 0; i < inputs.length; i += CHUNK) {
     const chunk = inputs.slice(i, i + CHUNK);
     const { data, error } = await supabase
       .from("warga_detail")
       .insert(chunk)
-      .select("id");
+      .select("id, rumah_id, nama_lengkap, nik");
     if (error) throw error;
-    inserted += data?.length ?? 0;
+    inserted.push(...((data ?? []) as InsertedWarga[]));
   }
   return inserted;
 }
@@ -278,6 +285,17 @@ export async function updateProfilSaya(
   return data as Pick<ProfilSaya, "id" | "nama_tampilan" | "no_hp">;
 }
 
+export async function ubahPasswordSaya(userId: string, password: string) {
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) throw error;
+
+  const { error: flagError } = await supabase
+    .from("profil_pengguna")
+    .update({ must_change_password: false })
+    .eq("id", userId);
+  if (flagError) throw flagError;
+}
+
 // ==================== ADMIN: AKUN WARGA ====================
 
 export interface AkunWarga {
@@ -350,6 +368,51 @@ export async function updateAkunWarga(
     .update(input)
     .eq("id", akunId);
   if (error) throw error;
+}
+
+export interface BuatAkunItem {
+  warga_id: string;
+  username: string;
+}
+
+export interface BuatAkunResult {
+  warga_id: string;
+  username: string;
+  ok: boolean;
+  password?: string;
+  error?: string;
+}
+
+async function pesanFunctionError(error: unknown): Promise<string> {
+  const context = (error as { context?: Response }).context;
+  if (context) {
+    try {
+      const body = (await context.json()) as { error?: string };
+      if (body?.error) return body.error;
+    } catch {
+      // pakai pesan default di bawah
+    }
+  }
+  return error instanceof Error ? error.message : "Gagal membuat akun.";
+}
+
+// Edge Function membatasi 25 akun per permintaan.
+export async function buatAkunWarga(
+  items: BuatAkunItem[]
+): Promise<BuatAkunResult[]> {
+  const CHUNK = 25;
+  const results: BuatAkunResult[] = [];
+  for (let i = 0; i < items.length; i += CHUNK) {
+    const { data, error } = await supabase.functions.invoke("buat-akun-warga", {
+      body: { items: items.slice(i, i + CHUNK) },
+    });
+    if (error) throw new Error(await pesanFunctionError(error));
+
+    const hasil = (data as { results?: BuatAkunResult[] } | null)?.results;
+    if (!hasil) throw new Error("Respons pembuatan akun tidak valid.");
+    results.push(...hasil);
+  }
+  return results;
 }
 
 // Username = nomor rumah + nama depan anggota, mis. "a30-siti".

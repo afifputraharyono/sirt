@@ -16,12 +16,17 @@ import { toast } from "sonner";
 import {
   useRumahList, useCreateRumah, useUpdateRumah, useDeleteRumah,
   useCreateWarga, useUpdateWarga, useDeleteWarga, useImportWarga,
+  useBuatAkunWarga,
 } from "@/features/warga/hooks";
 import {
   buildWargaImportPreview, CSV_TEMPLATE,
   type ImportPreview, type ImportRow,
 } from "@/features/warga/csv";
-import type { RumahWithWarga } from "@/features/warga/services";
+import {
+  saranUsername,
+  type BuatAkunResult,
+  type RumahWithWarga,
+} from "@/features/warga/services";
 import type {
   WargaDetail, StatusHunian, JenisKelamin, HubunganKeluarga,
   Agama, StatusPerkawinan, ModeJimpitan,
@@ -54,6 +59,7 @@ export default function AdminWarga() {
   const updateWarga = useUpdateWarga();
   const deleteWarga = useDeleteWarga();
   const importWarga = useImportWarga();
+  const buatAkun = useBuatAkunWarga();
 
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [rumahDrawer, setRumahDrawer] = useState(false);
@@ -70,10 +76,25 @@ export default function AdminWarga() {
   const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
   const [importFileName, setImportFileName] = useState("");
   const [readingFile, setReadingFile] = useState(false);
+  const [akunLines, setAkunLines] = useState<Set<number>>(new Set());
+  const [akunHasil, setAkunHasil] = useState<BuatAkunResult[] | null>(null);
+  const [buatAkunManual, setBuatAkunManual] = useState(false);
 
   const resetImport = () => {
     setImportPreview(null);
     setImportFileName("");
+    setAkunLines(new Set());
+  };
+
+  const wargaRumah = rumahList?.find((r) => r.id === wargaRumahId);
+
+  const toggleAkunLine = (line: number) => {
+    setAkunLines((prev) => {
+      const next = new Set(prev);
+      if (next.has(line)) next.delete(line);
+      else next.add(line);
+      return next;
+    });
   };
 
   const handleImportFile = async (file: File | null) => {
@@ -95,6 +116,7 @@ export default function AdminWarga() {
       const preview = buildWargaImportPreview(await file.text(), rumahList);
       setImportPreview(preview);
       setImportFileName(file.name);
+      setAkunLines(new Set());
     } catch {
       toast.error("File tidak bisa dibaca sebagai CSV");
     } finally {
@@ -112,17 +134,51 @@ export default function AdminWarga() {
     URL.revokeObjectURL(url);
   };
 
-  const handleImportSubmit = () => {
-    const payloads = (importPreview?.rows ?? [])
+  const handleImportSubmit = async () => {
+    const rows = importPreview?.rows ?? [];
+    const payloads = rows
       .map((row) => row.payload)
       .filter((payload): payload is NonNullable<typeof payload> => Boolean(payload));
     if (payloads.length === 0) return;
-    importWarga.mutate(payloads, {
-      onSuccess: () => {
-        setImportOpen(false);
-        resetImport();
-      },
-    });
+
+    let inserted: Awaited<ReturnType<typeof importWarga.mutateAsync>>;
+    try {
+      inserted = await importWarga.mutateAsync(payloads);
+    } catch {
+      return; // toast error sudah ditangani mutation; drawer tetap terbuka
+    }
+
+    const terpilih = rows.filter(
+      (row) => row.status === "ok" && row.payload && akunLines.has(row.line)
+    );
+    if (terpilih.length > 0) {
+      const idByNama = new Map(
+        inserted.map((w) => [
+          `${w.rumah_id}|${w.nama_lengkap.trim().toLowerCase()}`,
+          w.id,
+        ])
+      );
+      const items = terpilih.flatMap((row) => {
+        const wargaId = idByNama.get(
+          `${row.payload!.rumah_id}|${row.nama.trim().toLowerCase()}`
+        );
+        return wargaId
+          ? [{ warga_id: wargaId, username: saranUsername(row.noRumah, row.nama) }]
+          : [];
+      });
+      if (items.length > 0) {
+        try {
+          setAkunHasil(await buatAkun.mutateAsync(items));
+        } catch {
+          toast.error(
+            "Data warga tersimpan, tetapi pembuatan akun gagal. Coba lagi lewat menu Akun Warga."
+          );
+        }
+      }
+    }
+
+    setImportOpen(false);
+    resetImport();
   };
 
   const toggleRow = (id: string) => {
@@ -191,9 +247,44 @@ export default function AdminWarga() {
       );
     } else {
       createWarga.mutate(payload, {
-        onSuccess: () => setWargaDrawer(false),
+        onSuccess: async (warga) => {
+          setWargaDrawer(false);
+          setBuatAkunManual(false);
+          if (buatAkunManual && wargaRumah) {
+            try {
+              setAkunHasil(
+                await buatAkun.mutateAsync([
+                  {
+                    warga_id: warga.id,
+                    username: saranUsername(wargaRumah.no_rumah, payload.nama_lengkap),
+                  },
+                ])
+              );
+            } catch {
+              toast.error(
+                "Data warga tersimpan, tetapi pembuatan akun gagal. Coba lagi lewat menu Akun Warga."
+              );
+            }
+          }
+        },
       });
     }
+  };
+
+  const handleDownloadAkun = () => {
+    const berhasil = (akunHasil ?? []).filter((r) => r.ok);
+    if (berhasil.length === 0) return;
+    const lines = ["username,password"];
+    berhasil.forEach((r) => lines.push(`${r.username},${r.password ?? ""}`));
+    const blob = new Blob(["\uFEFF" + lines.join("\r\n")], {
+      type: "text/csv;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "akun-warga-baru.csv";
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   const handleDelete = () => {
@@ -277,7 +368,7 @@ export default function AdminWarga() {
                 onToggle={() => toggleRow(rumah.id)}
                 onEditRumah={() => { setEditRumah(rumah); setRumahDrawer(true); }}
                 onDeleteRumah={() => setDeleteTarget({ type: "rumah", id: rumah.id })}
-                onAddWarga={() => { setEditWarga(null); setWargaRumahId(rumah.id); setWargaDrawer(true); }}
+                onAddWarga={() => { setEditWarga(null); setWargaRumahId(rumah.id); setBuatAkunManual(false); setWargaDrawer(true); }}
                 onEditWarga={(w) => { setEditWarga(w); setWargaRumahId(rumah.id); setWargaDrawer(true); }}
                 onDeleteWarga={(id) => setDeleteTarget({ type: "warga", id })}
               />
@@ -397,6 +488,26 @@ export default function AdminWarga() {
               <Input name="golongan_darah" maxLength={3} defaultValue={editWarga?.golongan_darah ?? ""} className="rounded-[11px]" />
             </FormField>
           </div>
+
+          {!editWarga && (
+            <label className="flex items-start gap-2.5 rounded-[11px] border border-border/60 px-3 py-2.5">
+              <input
+                type="checkbox"
+                checked={buatAkunManual}
+                onChange={(e) => setBuatAkunManual(e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0 rounded border-border accent-primary"
+              />
+              <div>
+                <div className="text-[12.5px] font-bold">Buatkan akun login</div>
+                <div className="text-[11px] leading-relaxed text-muted-foreground">
+                  Username: nomor rumah + nama depan (mis. a1-budi). Password awal:
+                  sirt-rt-{wargaRumah?.no_rumah.toLowerCase() ?? "<no rumah>"}, wajib
+                  diganti saat login pertama.
+                </div>
+              </div>
+            </label>
+          )}
+
           <PrimaryButton pending={createWarga.isPending || updateWarga.isPending} />
         </form>
       </BottomDrawer>
@@ -457,6 +568,14 @@ export default function AdminWarga() {
                 <SummaryChip tone="error">{importPreview.errorCount} error</SummaryChip>
               </div>
 
+              {akunLines.size > 0 && (
+                <p className="text-[11px] leading-relaxed text-muted-foreground">
+                  {akunLines.size} anggota akan dibuatkan akun login. Password awal{" "}
+                  <span className="font-mono">sirt-rt-&lt;no rumah&gt;</span> dan wajib
+                  diganti saat login pertama.
+                </p>
+              )}
+
               {importPreview.rows.length === 0 ? (
                 <p className="rounded-[12px] border border-dashed border-border/60 px-3 py-4 text-center text-[12px] text-muted-foreground">
                   Tidak ada baris data di file.
@@ -464,7 +583,12 @@ export default function AdminWarga() {
               ) : (
                 <div className="flex max-h-72 flex-col gap-1.5 overflow-y-auto pr-0.5">
                   {importPreview.rows.slice(0, 200).map((row) => (
-                    <ImportRowItem key={row.line} row={row} />
+                    <ImportRowItem
+                      key={row.line}
+                      row={row}
+                      akunDipilih={akunLines.has(row.line)}
+                      onToggleAkun={() => toggleAkunLine(row.line)}
+                    />
                   ))}
                 </div>
               )}
@@ -478,11 +602,15 @@ export default function AdminWarga() {
               <button
                 type="button"
                 onClick={handleImportSubmit}
-                disabled={importPreview.okCount === 0 || importWarga.isPending}
+                disabled={
+                  importPreview.okCount === 0 ||
+                  importWarga.isPending ||
+                  buatAkun.isPending
+                }
                 className="mt-1 w-full rounded-xl bg-primary py-3 text-[14px] font-bold text-primary-foreground transition-transform active:scale-[0.98] disabled:opacity-60"
               >
-                {importWarga.isPending
-                  ? "Mengimpor..."
+                {importWarga.isPending || buatAkun.isPending
+                  ? "Memproses..."
                   : importPreview.okCount === 0
                     ? "Tidak ada baris yang bisa diimpor"
                     : `Impor ${importPreview.okCount} anggota`}
@@ -491,6 +619,57 @@ export default function AdminWarga() {
           )}
         </div>
       </BottomDrawer>
+
+      {/* Dialog hasil pembuatan akun */}
+      <AlertDialog
+        open={!!akunHasil}
+        onOpenChange={(open) => !open && setAkunHasil(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Akun Login Dibuat</AlertDialogTitle>
+            <AlertDialogDescription>
+              {(akunHasil ?? []).filter((r) => r.ok).length} akun berhasil,{" "}
+              {(akunHasil ?? []).filter((r) => !r.ok).length} gagal. Sampaikan
+              password awal ke warga; password wajib diganti saat login pertama.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="flex max-h-56 flex-col gap-1.5 overflow-y-auto">
+            {(akunHasil ?? []).map((r) => (
+              <div
+                key={`${r.warga_id}-${r.username}`}
+                className="flex items-center justify-between gap-2 rounded-[10px] bg-muted/40 px-2.5 py-2 text-[12px]"
+              >
+                <span className="font-mono font-bold">{r.username}</span>
+                {r.ok ? (
+                  <span className="font-mono text-emerald-600 dark:text-emerald-400">
+                    {r.password}
+                  </span>
+                ) : (
+                  <span className="text-right text-[11px] text-destructive">
+                    {r.error}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <AlertDialogFooter>
+            {(akunHasil ?? []).some((r) => r.ok) && (
+              <button
+                type="button"
+                onClick={handleDownloadAkun}
+                className="flex items-center justify-center gap-1.5 rounded-[10px] border border-border/60 px-3 py-2 text-[12.5px] font-bold transition-transform active:scale-[0.96]"
+              >
+                <Download className="h-3.5 w-3.5" strokeWidth={2.4} />
+                Unduh CSV
+              </button>
+            )}
+            <AlertDialogAction>Tutup</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Confirm Delete */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
@@ -527,7 +706,15 @@ function SummaryChip({ tone, children }: { tone: ImportRow["status"]; children: 
   );
 }
 
-function ImportRowItem({ row }: { row: ImportRow }) {
+function ImportRowItem({
+  row,
+  akunDipilih,
+  onToggleAkun,
+}: {
+  row: ImportRow;
+  akunDipilih: boolean;
+  onToggleAkun: () => void;
+}) {
   const Icon = row.status === "ok" ? CheckCircle2 : row.status === "skip" ? AlertTriangle : XCircle;
   const tone =
     row.status === "ok"
@@ -547,6 +734,20 @@ function ImportRowItem({ row }: { row: ImportRow }) {
         </div>
         {row.messages.length > 0 && (
           <div className={`mt-0.5 text-[11px] leading-snug ${tone}`}>{row.messages.join(" ")}</div>
+        )}
+        {row.status === "ok" && (
+          <label className="mt-1 flex items-center gap-1.5 text-[11px] font-medium">
+            <input
+              type="checkbox"
+              checked={akunDipilih}
+              onChange={onToggleAkun}
+              className="h-3.5 w-3.5 rounded border-border accent-primary"
+            />
+            Buat akun
+            <span className="font-mono text-[10.5px] text-muted-foreground">
+              {saranUsername(row.noRumah, row.nama)}
+            </span>
+          </label>
         )}
       </div>
     </div>

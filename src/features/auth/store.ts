@@ -41,6 +41,7 @@ export const useAuthStore = create<AuthState>((set) => ({
             warga_id: profile.warga_id,
             avatar_url: profile.avatar_url,
             no_hp: profile.no_hp,
+            must_change_password: profile.must_change_password ?? false,
           };
           set({ user: authUser, role: profile.role });
         }
@@ -92,6 +93,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         warga_id: profile.warga_id,
         avatar_url: profile.avatar_url,
         no_hp: profile.no_hp,
+        must_change_password: profile.must_change_password ?? false,
       };
 
       set({ user: authUser, role: profile.role });

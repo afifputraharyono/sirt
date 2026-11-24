@@ -8,6 +8,7 @@ export interface AuthUser {
   warga_id: string | null;
   avatar_url: string | null;
   no_hp: string | null;
+  must_change_password: boolean;
 }
 
 export interface Session {

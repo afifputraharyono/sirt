@@ -15,7 +15,10 @@ import {
   updateProfilSaya,
   fetchAkunWarga,
   updateAkunWarga,
+  buatAkunWarga,
+  ubahPasswordSaya,
   type AkunWargaUpdate,
+  type BuatAkunItem,
   type CreateRumahInput,
   type CreateWargaInput,
 } from "./services";
@@ -92,7 +95,7 @@ export function useImportWarga() {
     mutationFn: (inputs: CreateWargaInput[]) => bulkCreateWarga(inputs),
     onSuccess: (inserted) => {
       qc.invalidateQueries({ queryKey: queryKeys.warga.all });
-      toast.success(`${inserted} anggota warga berhasil diimpor`);
+      toast.success(`${inserted.length} anggota warga berhasil diimpor`);
     },
     onError: (err: Error) => toast.error(err.message),
   });
@@ -174,12 +177,53 @@ export function useUpdateProfilSaya() {
   });
 }
 
+export function useUbahPasswordSaya() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      userId,
+      password,
+    }: {
+      userId: string;
+      password: string;
+    }) => ubahPasswordSaya(userId, password),
+    onSuccess: () => {
+      const user = useAuthStore.getState().user;
+      if (user) {
+        useAuthStore.setState({ user: { ...user, must_change_password: false } });
+      }
+      qc.invalidateQueries({ queryKey: queryKeys.warga.all });
+      toast.success("Password berhasil diganti");
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
+
 // ==================== ADMIN: AKUN WARGA ====================
 
 export function useAkunWarga() {
   return useQuery({
     queryKey: queryKeys.warga.accounts(),
     queryFn: fetchAkunWarga,
+  });
+}
+
+export function useBuatAkunWarga() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (items: BuatAkunItem[]) => buatAkunWarga(items),
+    onSuccess: (results) => {
+      qc.invalidateQueries({ queryKey: queryKeys.warga.all });
+      const gagal = results.filter((r) => !r.ok).length;
+      if (gagal > 0) {
+        toast.warning(
+          `${results.length - gagal} akun dibuat, ${gagal} gagal. Periksa daftar hasil.`
+        );
+      } else {
+        toast.success(`${results.length} akun warga dibuat`);
+      }
+    },
+    onError: (err: Error) => toast.error(err.message),
   });
 }
 
@@ -195,9 +239,10 @@ export function useSetAkunWargaAnggota() {
       toast.success("Akun warga berhasil diperbarui");
     },
     onError: (err: Error) => {
-      const pesan =
-        err.message.includes("duplicate key") ||
-        err.message.includes("profil_pengguna_username_unik")
+      const pesan = err.message.includes("profil_pengguna_warga_unik")
+        ? "Anggota ini sudah ditautkan ke akun lain"
+        : err.message.includes("duplicate key") ||
+            err.message.includes("profil_pengguna_username_unik")
           ? "Username sudah dipakai akun lain"
           : err.message;
       toast.error(pesan);

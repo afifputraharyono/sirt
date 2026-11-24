@@ -1,4 +1,4 @@
-import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
+import { Navigate, Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import { Home, Wallet, User, LogOut } from "lucide-react";
 import { useAuthStore } from "@/features/auth/store";
 import { ThemeToggle } from "@/shared/components/layout/ThemeToggle";
@@ -20,6 +20,11 @@ export default function WargaLayout() {
     await logout();
     navigate("/login", { replace: true });
   };
+
+  // Akun dengan password awal buatan admin wajib mengganti password dulu.
+  if (user?.must_change_password && pathname !== "/warga/profil") {
+    return <Navigate to="/warga/profil" replace />;
+  }
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-[430px] flex-col bg-background transition-colors duration-200">
