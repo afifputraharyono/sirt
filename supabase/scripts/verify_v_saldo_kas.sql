@@ -1,6 +1,10 @@
 -- ============================================================
 -- Verifikasi v_saldo_kas — READ-ONLY
 -- ============================================================
+-- CATATAN: skrip ini mengacu pada migrasi 014 (view 10 kolom). Setelah
+-- migrasi 018, gunakan supabase/scripts/verify_017_018_019.sql untuk
+-- memeriksa state terbaru (view 17 kolom + saldo per sumber).
+--
 -- Jalankan di Supabase SQL Editor (role postgres) atau via
 --   supabase db query --linked -f supabase/scripts/verify_v_saldo_kas.sql
 --
