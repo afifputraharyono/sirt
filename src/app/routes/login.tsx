@@ -39,9 +39,8 @@ export default function LoginPage() {
       setError(null);
       const parsed = loginSchema.parse(data);
       const result = await login(parsed.identifier, parsed.password);
-      const from = (
-        location.state as { from?: { pathname?: string } } | null
-      )?.from?.pathname;
+      const from = (location.state as { from?: { pathname?: string } } | null)
+        ?.from?.pathname;
       const navigateTo =
         from && from !== "/login" ? from : dashboardPathFor(result.role);
 
@@ -79,8 +78,10 @@ export default function LoginPage() {
                 autoComplete="username"
                 autoCapitalize="none"
                 spellCheck={false}
-                placeholder="Contoh: a30-siti"
-                {...register("identifier", { required: "Username wajib diisi" })}
+                placeholder="Contoh: a10-siti"
+                {...register("identifier", {
+                  required: "Username wajib diisi",
+                })}
               />
               {errors.identifier && (
                 <p className="text-xs text-destructive">

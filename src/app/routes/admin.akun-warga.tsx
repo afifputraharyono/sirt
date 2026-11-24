@@ -77,7 +77,7 @@ export default function AdminAkunWarga() {
     setWargaId(akun.warga_id ?? "");
     setUsername(akun.username ?? "");
     const rumah = rumahList?.find(
-      (r) => r.no_rumah === akun.warga_detail?.rumah_kk?.no_rumah
+      (r) => r.no_rumah === akun.warga_detail?.rumah_kk?.no_rumah,
     );
     setRumahId(rumah?.id ?? "");
     setDrawerOpen(true);
@@ -91,7 +91,7 @@ export default function AdminAkunWarga() {
         warga_id: wargaId,
         username: username.trim().toLowerCase(),
       },
-      { onSuccess: () => setDrawerOpen(false) }
+      { onSuccess: () => setDrawerOpen(false) },
     );
   };
 
@@ -99,7 +99,7 @@ export default function AdminAkunWarga() {
     if (!target) return;
     setAnggota.mutate(
       { akunId: target.id, warga_id: null },
-      { onSuccess: () => setDrawerOpen(false) }
+      { onSuccess: () => setDrawerOpen(false) },
     );
   };
 
@@ -175,7 +175,9 @@ export default function AdminAkunWarga() {
                     )}
                   </div>
                   <p className="mt-0.5 truncate text-[12px] text-muted-foreground">
-                    {akun.username ? `@${akun.username}` : "Username belum diatur"}
+                    {akun.username
+                      ? `@${akun.username}`
+                      : "Username belum diatur"}
                     {tertaut
                       ? ` · Rumah ${rumah ?? "?"} · ${akun.warga_detail?.nama_lengkap}`
                       : akun.no_hp
@@ -227,7 +229,7 @@ export default function AdminAkunWarga() {
                 const noRumah =
                   rumahList?.find((r) => r.id === rumahId)?.no_rumah ?? "";
                 setUsername(
-                  anggota ? saranUsername(noRumah, anggota.nama_lengkap) : ""
+                  anggota ? saranUsername(noRumah, anggota.nama_lengkap) : "",
                 );
               }}
               disabled={!rumahId}
@@ -263,7 +265,7 @@ export default function AdminAkunWarga() {
             </p>
             {username.length > 0 && !usernameValid && (
               <p className="text-[11.5px] text-destructive">
-                Format username tidak valid (2–30 karakter, contoh a30-siti).
+                Format username tidak valid (2–30 karakter, contoh axx-nama).
               </p>
             )}
           </FormField>
