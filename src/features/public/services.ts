@@ -91,6 +91,22 @@ const MULAI_KEWAJIBAN: Partial<Record<TipeTagihan, number | null>> = {
   Arisan: RT_CONFIG.mulai_kewajiban.arisan,
 };
 
+// Rumah yang baru ditempati setelah kas berjalan punya mulai_kas_ibu lebih
+// lambat dari aturan global. Tanggal tahun lalu tetap ikut aturan global;
+// tanggal tahun berjalan menunda kewajiban sampai bulan tersebut.
+function awalKasIbu(
+  globalAwal: number | null,
+  mulaiKasIbu: string | null,
+  tahun: number
+): number | null {
+  if (globalAwal == null || !mulaiKasIbu) return globalAwal;
+  const [tahunMulai, bulanMulai] = mulaiKasIbu.split("-").map(Number);
+  if (!tahunMulai || !bulanMulai) return globalAwal;
+  if (tahunMulai < tahun) return globalAwal;
+  if (tahunMulai > tahun) return null;
+  return Math.max(globalAwal, bulanMulai);
+}
+
 export function hitungTagihan(params: {
   noRumah: string;
   statusHunian: StatusHunian | null;
@@ -98,6 +114,7 @@ export function hitungTagihan(params: {
   bulanSekarang: number;
   kasRows: Array<{ tipe_kas: TipeKas; bulan: number; tahun: number }>;
   pesertaArisan: boolean;
+  mulaiKasIbu: string | null;
 }): TagihanRumah {
   const kosong: TagihanRumah = {
     found: true,
@@ -117,16 +134,22 @@ export function hitungTagihan(params: {
     params.kasRows.map((r) => `${r.tipe_kas}-${r.bulan}-${r.tahun}`)
   );
 
-  // Jenis yang kewajibannya belum dimulai (mulai_kewajiban === null) tidak dihitung.
+  // Jenis yang kewajibannya belum dimulai (null) tidak dihitung.
   const tipeDasar: TipeTagihan[] = params.pesertaArisan
     ? ["Bapak", "Ibu", "Arisan"]
     : ["Bapak", "Ibu"];
-  const tipeAktif = tipeDasar.filter(
-    (t) => MULAI_KEWAJIBAN[t] != null
-  );
+  const awalPerTipe: Partial<Record<TipeTagihan, number | null>> = {};
+  for (const tipe of tipeDasar) {
+    const global = MULAI_KEWAJIBAN[tipe] ?? null;
+    awalPerTipe[tipe] =
+      tipe === "Ibu"
+        ? awalKasIbu(global, params.mulaiKasIbu, params.tahun)
+        : global;
+  }
+  const tipeAktif = tipeDasar.filter((t) => awalPerTipe[t] != null);
 
   const rincian: RincianTagihan[] = tipeAktif.map((tipe) => {
-    const awal = MULAI_KEWAJIBAN[tipe]!; // sudah dijamin non-null oleh filter
+    const awal = awalPerTipe[tipe]!; // sudah dijamin non-null oleh filter
     let jumlahLunas = 0;
     for (let b = awal; b <= params.bulanSekarang; b++) {
       if (lunasSet.has(`${tipe}-${b}-${params.tahun}`)) jumlahLunas++;
@@ -148,7 +171,7 @@ export function hitungTagihan(params: {
     detailPerBulan.push({
       bulan: b,
       items: tipeAktif
-        .filter((t) => b >= (MULAI_KEWAJIBAN[t] ?? 0))
+        .filter((t) => b >= (awalPerTipe[t] ?? 0))
         .map((t) => ({ tipe: t, lunas: lunasSet.has(`${t}-${b}-${params.tahun}`) })),
     });
   }
@@ -170,14 +193,17 @@ export async function fetchTagihanRumah(noRumah: string): Promise<TagihanRumah> 
 
   const { data: rumahRows, error: rumahError } = await supabase
     .from("rumah_kk")
-    .select("id, no_rumah, status_hunian, is_active, ikut_arisan")
+    .select("id, no_rumah, status_hunian, is_active, ikut_arisan, mulai_kas_ibu")
     .eq("no_rumah", noRumah.trim())
     .eq("is_active", true)
     .limit(1);
   if (rumahError) throw rumahError;
   const rumah = (
     rumahRows as
-      | Pick<RumahKK, "id" | "no_rumah" | "status_hunian" | "ikut_arisan">[]
+      | Pick<
+          RumahKK,
+          "id" | "no_rumah" | "status_hunian" | "ikut_arisan" | "mulai_kas_ibu"
+        >[]
       | null
   )?.[0];
 
@@ -216,5 +242,6 @@ export async function fetchTagihanRumah(noRumah: string): Promise<TagihanRumah> 
       tahun: number;
     }>,
     pesertaArisan,
+    mulaiKasIbu: rumah.mulai_kas_ibu ?? null,
   });
 }

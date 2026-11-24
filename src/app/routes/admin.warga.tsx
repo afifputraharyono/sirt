@@ -85,6 +85,7 @@ export default function AdminWarga() {
       mode_jimpitan: fd.get("mode_jimpitan") as ModeJimpitan,
       catatan: (fd.get("catatan") as string) || null,
       ikut_arisan: fd.get("ikut_arisan") === "on",
+      mulai_kas_ibu: (fd.get("mulai_kas_ibu") as string) || null,
     };
     if (editRumah) {
       updateRumah.mutate(
@@ -244,6 +245,17 @@ export default function AdminWarga() {
                 <div className="text-[11px] text-muted-foreground">Peserta arisan bergulir</div>
               </div>
             </label>
+          </FormField>
+          <FormField label="Mulai Kas Ibu">
+            <Input
+              name="mulai_kas_ibu"
+              type="date"
+              defaultValue={editRumah?.mulai_kas_ibu ?? ""}
+              className="rounded-[11px]"
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Kosongkan bila rumah sudah ditempati sebelum kas berjalan (wajib sejak Agustus).
+            </p>
           </FormField>
           <FormField label="Catatan">
             <Input name="catatan" defaultValue={editRumah?.catatan ?? ""} className="rounded-[11px]" />

@@ -36,6 +36,7 @@ export type CreateRumahInput = Pick<
   | "mode_jimpitan"
   | "catatan"
   | "ikut_arisan"
+  | "mulai_kas_ibu"
 >;
 
 export async function createRumah(input: CreateRumahInput) {

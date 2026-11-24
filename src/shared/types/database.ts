@@ -68,6 +68,7 @@ export interface RumahKK {
   mode_jimpitan: ModeJimpitan;
   catatan: string | null;
   ikut_arisan: boolean;
+  mulai_kas_ibu: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
