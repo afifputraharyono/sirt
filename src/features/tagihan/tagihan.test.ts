@@ -1,11 +1,6 @@
-import { describe, expect, it, vi } from "vitest";
-
-// services.ts membuat klien Supabase saat modul dimuat; engine tagihan sendiri
-// murni dan tidak menyentuh jaringan, jadi klien cukup di-stub.
-vi.mock("@/shared/lib/supabase", () => ({ supabase: {} }));
-
-import { hitungTagihan } from "./services";
-import type { KeanggotaanArisan } from "./services";
+import { describe, expect, it } from "vitest";
+import { hitungTagihan } from "./tagihan";
+import type { KeanggotaanArisan } from "./tagihan";
 import type { PeriodeHunianRingkas } from "@/shared/lib/hunian";
 
 type Params = Parameters<typeof hitungTagihan>[0];

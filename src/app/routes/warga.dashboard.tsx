@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useKonteksWarga } from "@/features/warga/hooks";
 import { AkunBelumTertaut } from "@/features/warga/components/AkunBelumTertaut";
 import { useTagihanRumah } from "@/features/public/hooks";
-import type { TipeTagihan } from "@/features/public/services";
+import type { TipeTagihan } from "@/features/tagihan/tagihan";
 import { formatRupiah } from "@/shared/utils/format";
 
 function labelTipe(tipe: TipeTagihan) {

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
-import type { TagihanTahun, TipeTagihan } from "@/features/public/services";
+import type { TagihanTahun, TipeTagihan } from "@/features/tagihan/tagihan";
 import { formatRupiah } from "@/shared/utils/format";
 
 const BULAN_NAMES = [

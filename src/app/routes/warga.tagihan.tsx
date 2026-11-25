@@ -11,7 +11,7 @@ import { useKonteksWarga, useKasSaya } from "@/features/warga/hooks";
 import { AkunBelumTertaut } from "@/features/warga/components/AkunBelumTertaut";
 import { useTagihanRumah } from "@/features/public/hooks";
 import { TagihanPerTahun } from "@/features/public/components/TagihanPerTahun";
-import type { TipeTagihan } from "@/features/public/services";
+import type { TipeTagihan } from "@/features/tagihan/tagihan";
 import { formatRupiah, formatTanggalPendek } from "@/shared/utils/format";
 import { RT_CONFIG } from "@/shared/lib/constants";
 

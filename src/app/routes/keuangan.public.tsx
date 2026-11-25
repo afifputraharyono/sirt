@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { useSaldoKas, usePengeluaran } from "@/features/keuangan/hooks";
 import { useTagihanRumah } from "@/features/public/hooks";
-import type { TipeTagihan } from "@/features/public/services";
+import type { TipeTagihan } from "@/features/tagihan/tagihan";
 import { ArisanFlowCard } from "@/features/public/components/ArisanFlowCard";
 import { TagihanPerTahun } from "@/features/public/components/TagihanPerTahun";
 import { formatRupiah, formatTanggalPendek } from "@/shared/utils/format";
