@@ -1,272 +1,49 @@
-export type StatusHunian = "Tetap" | "Kontrak" | "Kosong";
-export type JenisKelamin = "L" | "P";
-export type HubunganKeluarga =
-  | "Kepala Keluarga"
-  | "Istri"
-  | "Anak"
-  | "Orang Tua"
-  | "Mertua"
-  | "Menantu"
-  | "Cucu"
-  | "Famili Lain"
-  | "Lainnya";
-export type StatusPerkawinan =
-  | "Belum Kawin"
-  | "Kawin"
-  | "Cerai Hidup"
-  | "Cerai Mati";
-export type Agama =
-  | "Islam"
-  | "Kristen"
-  | "Katolik"
-  | "Hindu"
-  | "Buddha"
-  | "Konghucu"
-  | "Lainnya";
-export type TipeKas = "Bapak" | "Ibu" | "Arisan";
-export type StatusJimpitan = "Belum" | "Diambil" | "Kosong";
+import type { Database } from "./database.generated";
+
+export type { Database };
+
+type Tables = Database["public"]["Tables"];
+type Views = Database["public"]["Views"];
+type Enums = Database["public"]["Enums"];
+
+// Kolom teks berpola (CHECK) tetap dipersempit agar aman di UI.
 export type ModeJimpitan = "Harian" | "Bulanan" | "Bebas";
 export type TipeJimpitan = "harian" | "bulanan";
 export type SumberDana = "Kas Bapak" | "Kas Ibu" | "Jimpitan" | "Arisan";
-export type KategoriPengeluaran =
-  | "Operasional"
-  | "Keamanan"
-  | "Kebersihan"
-  | "Sosial"
-  | "Pembangunan"
-  | "Kegiatan"
-  | "Lainnya";
-export type JenisSurat =
-  | "Pengantar KTP"
-  | "Pengantar KK"
-  | "Domisili"
-  | "Keterangan Usaha"
-  | "Keterangan Tidak Mampu"
-  | "Pengantar SKCK"
-  | "Keterangan Kematian"
-  | "Keterangan Pindah"
-  | "Lainnya";
-export type StatusSurat = "Diajukan" | "Diproses" | "Selesai" | "Ditolak";
-export type StatusPeminjaman = "Dipinjam" | "Dikembalikan" | "Rusak" | "Hilang";
-export type KondisiBarang =
-  | "Baik"
-  | "Rusak Ringan"
-  | "Rusak Berat"
-  | "Hilang";
-export type AlasanNonaktif = "Pindah" | "Wafat" | "Lainnya";
 
-export interface RumahKK {
-  id: string;
-  no_rumah: string;
-  no_kk: string | null;
-  alamat_lengkap: string | null;
-  rt: string;
-  rw: string;
-  kelurahan: string;
-  kecamatan: string;
-  status_hunian: StatusHunian;
-  mode_jimpitan: ModeJimpitan;
-  catatan: string | null;
-  ikut_arisan: boolean;
-  mulai_kas_ibu: string | null;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-}
+export type StatusHunian = Enums["status_hunian"];
+export type JenisKelamin = Enums["jenis_kelamin"];
+export type HubunganKeluarga = Enums["hubungan_keluarga"];
+export type StatusPerkawinan = Enums["status_perkawinan"];
+export type Agama = Enums["agama"];
+export type TipeKas = Enums["tipe_kas"];
+export type StatusJimpitan = Enums["status_jimpitan"];
+export type KategoriPengeluaran = Enums["kategori_pengeluaran"];
+export type JenisSurat = Enums["jenis_surat"];
+export type StatusSurat = Enums["status_surat"];
+export type StatusPeminjaman = Enums["status_peminjaman"];
+export type KondisiBarang = Enums["kondisi_barang"];
+export type AlasanNonaktif = Enums["alasan_nonaktif"];
 
-export interface RumahHunian {
-  id: string;
-  rumah_id: string;
-  tanggal_mulai: string;
-  tanggal_selesai: string | null;
-  tunggakan_dialihkan: boolean;
-  catatan: string | null;
-  created_at: string;
-  updated_at: string;
-}
+export type RumahKK = Tables["rumah_kk"]["Row"] & { mode_jimpitan: ModeJimpitan };
+export type RumahHunian = Tables["rumah_hunian"]["Row"];
+export type WargaDetail = Tables["warga_detail"]["Row"];
+export type KasBulanan = Tables["kas_bulanan"]["Row"];
+export type JimpitanHarian = Tables["jimpitan_harian"]["Row"] & { tipe: TipeJimpitan };
+export type PengeluaranKas = Tables["pengeluaran_kas"]["Row"] & { sumber_dana: SumberDana };
+export type GrupPengeluaran = Tables["grup_pengeluaran"]["Row"];
+export type ArisanRonde = Tables["arisan_ronde"]["Row"];
+export type ArisanPutaran = Tables["arisan_putaran"]["Row"];
+export type JadwalRonda = Tables["jadwal_ronda"]["Row"];
+export type SuratPengantar = Tables["surat_pengantar"]["Row"];
+export type Pengumuman = Tables["pengumuman"]["Row"];
+export type Inventaris = Tables["inventaris"]["Row"];
 
-export interface WargaDetail {
-  id: string;
-  rumah_id: string;
-  nik: string | null;
-  nama_lengkap: string;
-  jenis_kelamin: JenisKelamin;
-  tempat_lahir: string | null;
-  tanggal_lahir: string;
-  agama: Agama;
-  status_perkawinan: StatusPerkawinan;
-  hubungan_keluarga: HubunganKeluarga;
-  pendidikan_terakhir: string | null;
-  pekerjaan: string | null;
-  no_hp: string | null;
-  golongan_darah: string | null;
-  is_active: boolean;
-  alasan_nonaktif: AlasanNonaktif | null;
-  tanggal_nonaktif: string | null;
-  keterangan_nonaktif: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface KasBulanan {
-  id: string;
-  rumah_id: string;
-  tipe_kas: TipeKas;
-  bulan: number;
-  tahun: number;
-  jumlah: number;
-  status_bayar: boolean;
-  tanggal_bayar: string | null;
-  metode_bayar: string | null;
-  bukti_bayar_url: string | null;
-  dicatat_oleh: string;
-  keterangan: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface JimpitanHarian {
-  id: string;
-  rumah_id: string;
-  tanggal: string;
-  nominal: number;
-  status: StatusJimpitan;
-  tipe: TipeJimpitan;
-  catatan: string | null;
-  dicatat_oleh: string;
-  is_locked: boolean;
-  dikunci_oleh: string | null;
-  dikunci_at: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface PengeluaranKas {
-  id: string;
-  tanggal: string;
-  kategori: KategoriPengeluaran;
-  nominal: number;
-  keterangan: string;
-  bukti_url: string | null;
-  sumber_dana: SumberDana;
-  grup_id: string | null;
-  disetujui_oleh: string | null;
-  dicatat_oleh: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface GrupPengeluaran {
-  id: string;
-  nama: string;
-  tanggal: string;
-  catatan: string | null;
-  dibuat_oleh: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface ArisanRonde {
-  id: string;
-  nomor: number;
-  tanggal_mulai: string;
-  tanggal_selesai: string | null;
-  catatan: string | null;
-  dicatat_oleh: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface ArisanPutaran {
-  id: string;
-  bulan: number;
-  tahun: number;
-  pemenang_rumah_id: string;
-  nominal: number;
-  tanggal_undi: string | null;
-  pengeluaran_id: string | null;
-  catatan: string | null;
-  dicatat_oleh: string;
-  ronde_id: string;
-  urutan: number;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface ArisanRekap {
+// View mengembalikan kolom nullable; periode dan status selalu terisi.
+export type ArisanRekap = Views["v_arisan_rekap"]["Row"] & {
   tahun: number;
   bulan: number;
-  putaran_id: string | null;
-  pemenang_rumah_id: string | null;
-  pemenang_no_rumah: string | null;
   nominal_terkumpul: number;
   jumlah_pembayar: number;
-  nominal_putaran: number | null;
   sudah_disalurkan: boolean;
-  tanggal_undi: string | null;
-  pengeluaran_id: string | null;
-  catatan: string | null;
-  created_at: string | null;
-  updated_at: string | null;
-  ronde_id: string | null;
-  urutan: number | null;
-  ronde_nomor: number | null;
-}
-
-export interface JadwalRonda {
-  id: string;
-  periode_id: string;
-  hari: string;
-  warga_id: string;
-  urutan: number;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface SuratPengantar {
-  id: string;
-  nomor_surat: string;
-  jenis_surat: JenisSurat;
-  warga_id: string;
-  keperluan: string;
-  tujuan: string | null;
-  status: StatusSurat;
-  catatan_admin: string | null;
-  lampiran_url: string[] | null;
-  tanggal_diajukan: string;
-  tanggal_selesai: string | null;
-  diproses_oleh: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface Pengumuman {
-  id: string;
-  judul: string;
-  isi: string;
-  kategori: string | null;
-  is_pinned: boolean;
-  tanggal_mulai: string;
-  tanggal_berakhir: string | null;
-  lampiran_url: string[] | null;
-  dibuat_oleh: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface Inventaris {
-  id: string;
-  nama_barang: string;
-  kategori: string | null;
-  jumlah: number;
-  kondisi: KondisiBarang;
-  lokasi_penyimpanan: string | null;
-  tanggal_pengadaan: string | null;
-  nilai_perolehan: number | null;
-  foto_url: string | null;
-  catatan: string | null;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-}
+};
