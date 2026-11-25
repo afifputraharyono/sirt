@@ -64,6 +64,14 @@ export interface DetailTagihanBulan {
   items: Array<{ tipe: TipeTagihan; lunas: boolean }>;
 }
 
+export interface TagihanTahun {
+  tahun: number;
+  rincian: RincianTagihan[];
+  detailPerBulan: DetailTagihanBulan[];
+  totalKurang: number;
+  totalNominalKurang: number;
+}
+
 export interface TagihanRumah {
   found: boolean;
   wajibBayar: boolean;
@@ -71,10 +79,16 @@ export interface TagihanRumah {
   statusHunian: StatusHunian | null;
   tahun: number;
   bulanSekarang: number;
-  totalKurang: number;
-  totalNominalKurang: number;
+  /** Rincian & detail tahun berjalan (dipakai UI ringkas). */
   rincian: RincianTagihan[];
   detailPerBulan: DetailTagihanBulan[];
+  /** Semua tahun yang punya kewajiban, terbaru dulu. */
+  tahunList: TagihanTahun[];
+  /** Total seluruh tahun (termasuk tunggakan tahun sebelumnya). */
+  totalKurang: number;
+  totalNominalKurang: number;
+  adaTunggakanTahunLalu: boolean;
+  nominalTunggakanTahunLalu: number;
 }
 
 const NOMINAL_KAS: Record<TipeTagihan, number> = {
@@ -83,29 +97,45 @@ const NOMINAL_KAS: Record<TipeTagihan, number> = {
   Arisan: RT_CONFIG.nominal_arisan,
 };
 
-// Bulan mulai kewajiban per jenis, dari RT_CONFIG.mulai_kewajiban.
+// Tanggal mulai program per jenis (YYYY-MM, absolut lintas tahun).
 // null = belum berjalan di sistem → jenis itu tidak dihitung (kewajiban 0).
-const MULAI_KEWAJIBAN: Partial<Record<TipeTagihan, number | null>> = {
-  Bapak: RT_CONFIG.mulai_kewajiban.kas_bapak,
-  Ibu: RT_CONFIG.mulai_kewajiban.kas_ibu,
-  Arisan: RT_CONFIG.mulai_kewajiban.arisan,
+const MULAI_PROGRAM: Partial<Record<TipeTagihan, string | null>> = {
+  Bapak: RT_CONFIG.mulai_program.kas_bapak,
+  Ibu: RT_CONFIG.mulai_program.kas_ibu,
+  Arisan: RT_CONFIG.mulai_program.arisan,
 };
 
-// Rumah yang baru ditempati setelah kas berjalan punya mulai_kas_ibu lebih
-// lambat dari aturan global. Tanggal tahun berjalan menunda kewajiban sampai
-// bulan tersebut; bila mulai_kas_ibu di tahun sebelumnya, kewajiban berlanjut
-// sejak Januari tahun berjalan (bukan kembali ke aturan global Agustus).
-function awalKasIbu(
-  globalAwal: number | null,
-  mulaiKasIbu: string | null,
-  tahun: number
-): number | null {
-  if (globalAwal == null || !mulaiKasIbu) return globalAwal;
-  const [tahunMulai, bulanMulai] = mulaiKasIbu.split("-").map(Number);
-  if (!tahunMulai || !bulanMulai) return globalAwal;
-  if (tahunMulai < tahun) return 1;
-  if (tahunMulai > tahun) return null;
-  return Math.max(globalAwal, bulanMulai);
+interface TahunBulan {
+  tahun: number;
+  bulan: number;
+}
+
+function parseTahunBulan(value: string | null): TahunBulan | null {
+  if (!value) return null;
+  const [tahun, bulan] = value.split("-").map(Number);
+  if (!tahun || !bulan || bulan < 1 || bulan > 12) return null;
+  return { tahun, bulan };
+}
+
+function indeksBulan(tahun: number, bulan: number): number {
+  return tahun * 12 + (bulan - 1);
+}
+
+// Kas Ibu untuk rumah yang baru ditempati bisa lebih lambat dari program.
+// Arisan mengikuti awal program sampai keanggotaan berperiode tersedia.
+function awalKewajiban(
+  tipe: TipeTagihan,
+  mulaiKasIbu: string | null
+): TahunBulan | null {
+  const program = parseTahunBulan(MULAI_PROGRAM[tipe] ?? null);
+  if (!program) return null;
+  if (tipe !== "Ibu") return program;
+  const mulaiRumah = parseTahunBulan(mulaiKasIbu);
+  if (!mulaiRumah) return program;
+  return indeksBulan(mulaiRumah.tahun, mulaiRumah.bulan) >
+    indeksBulan(program.tahun, program.bulan)
+    ? mulaiRumah
+    : program;
 }
 
 export function hitungTagihan(params: {
@@ -113,7 +143,12 @@ export function hitungTagihan(params: {
   statusHunian: StatusHunian | null;
   tahun: number;
   bulanSekarang: number;
-  kasRows: Array<{ tipe_kas: TipeKas; bulan: number; tahun: number }>;
+  kasRows: Array<{
+    tipe_kas: TipeKas;
+    bulan: number;
+    tahun: number;
+    status_bayar?: boolean;
+  }>;
   pesertaArisan: boolean;
   mulaiKasIbu: string | null;
 }): TagihanRumah {
@@ -124,66 +159,115 @@ export function hitungTagihan(params: {
     statusHunian: params.statusHunian,
     tahun: params.tahun,
     bulanSekarang: params.bulanSekarang,
-    totalKurang: 0,
-    totalNominalKurang: 0,
     rincian: [],
     detailPerBulan: [],
+    tahunList: [],
+    totalKurang: 0,
+    totalNominalKurang: 0,
+    adaTunggakanTahunLalu: false,
+    nominalTunggakanTahunLalu: 0,
   };
   if (params.statusHunian === "Kosong") return kosong;
 
   const lunasSet = new Set(
-    params.kasRows.map((r) => `${r.tipe_kas}-${r.bulan}-${r.tahun}`)
+    params.kasRows
+      .filter((r) => r.status_bayar !== false)
+      .map((r) => `${r.tipe_kas}-${r.tahun}-${r.bulan}`)
   );
 
   // Jenis yang kewajibannya belum dimulai (null) tidak dihitung.
   const tipeDasar: TipeTagihan[] = params.pesertaArisan
     ? ["Bapak", "Ibu", "Arisan"]
     : ["Bapak", "Ibu"];
-  const awalPerTipe: Partial<Record<TipeTagihan, number | null>> = {};
-  for (const tipe of tipeDasar) {
-    const global = MULAI_KEWAJIBAN[tipe] ?? null;
-    awalPerTipe[tipe] =
-      tipe === "Ibu"
-        ? awalKasIbu(global, params.mulaiKasIbu, params.tahun)
-        : global;
-  }
-  const tipeAktif = tipeDasar.filter((t) => awalPerTipe[t] != null);
+  const tipeAktif = tipeDasar
+    .map((tipe) => ({ tipe, awal: awalKewajiban(tipe, params.mulaiKasIbu) }))
+    .filter(
+      (x): x is { tipe: TipeTagihan; awal: TahunBulan } => x.awal !== null
+    );
+  if (tipeAktif.length === 0) return { ...kosong, wajibBayar: true };
 
-  const rincian: RincianTagihan[] = tipeAktif.map((tipe) => {
-    const awal = awalPerTipe[tipe]!; // sudah dijamin non-null oleh filter
-    let jumlahLunas = 0;
-    for (let b = awal; b <= params.bulanSekarang; b++) {
-      if (lunasSet.has(`${tipe}-${b}-${params.tahun}`)) jumlahLunas++;
+  const tahunSekarang = params.tahun;
+  const indeksSekarang = indeksBulan(tahunSekarang, params.bulanSekarang);
+  const tahunAwal = Math.floor(
+    Math.min(
+      ...tipeAktif.map(({ awal }) => indeksBulan(awal.tahun, awal.bulan))
+    ) / 12
+  );
+
+  const tahunList: TagihanTahun[] = [];
+  for (let tahun = tahunAwal; tahun <= tahunSekarang; tahun++) {
+    const bulanAkhir = tahun === tahunSekarang ? params.bulanSekarang : 12;
+    const awalTahun = indeksBulan(tahun, 1);
+    const akhirTahun = indeksBulan(tahun, bulanAkhir);
+
+    const rincian: RincianTagihan[] = [];
+    for (const { tipe, awal } of tipeAktif) {
+      const awalIndeks = indeksBulan(awal.tahun, awal.bulan);
+      const dari = Math.max(awalIndeks, awalTahun);
+      const sampai = Math.min(akhirTahun, indeksSekarang);
+      if (dari > sampai) continue;
+
+      let jumlahLunas = 0;
+      for (let idx = dari; idx <= sampai; idx++) {
+        const y = Math.floor(idx / 12);
+        const m = (idx % 12) + 1;
+        if (lunasSet.has(`${tipe}-${y}-${m}`)) jumlahLunas++;
+      }
+      const bulanWajib = sampai - dari + 1;
+      const jumlahKurang = bulanWajib - jumlahLunas;
+      rincian.push({
+        tipe,
+        nominal: NOMINAL_KAS[tipe],
+        bulanWajib,
+        jumlahLunas,
+        jumlahKurang,
+        nominalKurang: jumlahKurang * NOMINAL_KAS[tipe],
+      });
     }
-    const bulanWajib = Math.max(0, params.bulanSekarang - awal + 1);
-    const jumlahKurang = bulanWajib - jumlahLunas;
-    return {
-      tipe,
-      nominal: NOMINAL_KAS[tipe],
-      bulanWajib,
-      jumlahLunas,
-      jumlahKurang,
-      nominalKurang: jumlahKurang * NOMINAL_KAS[tipe],
-    };
-  });
 
-  const detailPerBulan: DetailTagihanBulan[] = [];
-  for (let b = 1; b <= params.bulanSekarang; b++) {
-    detailPerBulan.push({
-      bulan: b,
-      items: tipeAktif
-        .filter((t) => b >= (awalPerTipe[t] ?? 0))
-        .map((t) => ({ tipe: t, lunas: lunasSet.has(`${t}-${b}-${params.tahun}`) })),
+    const detailPerBulan: DetailTagihanBulan[] = [];
+    for (let b = 1; b <= bulanAkhir; b++) {
+      const items = tipeAktif
+        .filter(
+          ({ awal }) =>
+            indeksBulan(tahun, b) >= indeksBulan(awal.tahun, awal.bulan)
+        )
+        .map(({ tipe }) => ({
+          tipe,
+          lunas: lunasSet.has(`${tipe}-${tahun}-${b}`),
+        }));
+      if (items.length > 0) detailPerBulan.push({ bulan: b, items });
+    }
+
+    if (rincian.length === 0) continue;
+    tahunList.push({
+      tahun,
+      rincian,
+      detailPerBulan,
+      totalKurang: rincian.reduce((s, r) => s + r.jumlahKurang, 0),
+      totalNominalKurang: rincian.reduce((s, r) => s + r.nominalKurang, 0),
     });
   }
+
+  tahunList.sort((a, b) => b.tahun - a.tahun);
+  const tahunIni = tahunList.find((t) => t.tahun === tahunSekarang);
+  const nominalTunggakanTahunLalu = tahunList
+    .filter((t) => t.tahun < tahunSekarang)
+    .reduce((s, t) => s + t.totalNominalKurang, 0);
 
   return {
     ...kosong,
     wajibBayar: true,
-    rincian,
-    detailPerBulan,
-    totalKurang: rincian.reduce((s, r) => s + r.jumlahKurang, 0),
-    totalNominalKurang: rincian.reduce((s, r) => s + r.nominalKurang, 0),
+    rincian: tahunIni?.rincian ?? [],
+    detailPerBulan: tahunIni?.detailPerBulan ?? [],
+    tahunList,
+    totalKurang: tahunList.reduce((s, t) => s + t.totalKurang, 0),
+    totalNominalKurang: tahunList.reduce(
+      (s, t) => s + t.totalNominalKurang,
+      0
+    ),
+    adaTunggakanTahunLalu: nominalTunggakanTahunLalu > 0,
+    nominalTunggakanTahunLalu,
   };
 }
 
@@ -216,18 +300,21 @@ export async function fetchTagihanRumah(noRumah: string): Promise<TagihanRumah> 
       statusHunian: null,
       tahun,
       bulanSekarang,
-      totalKurang: 0,
-      totalNominalKurang: 0,
       rincian: [],
       detailPerBulan: [],
+      tahunList: [],
+      totalKurang: 0,
+      totalNominalKurang: 0,
+      adaTunggakanTahunLalu: false,
+      nominalTunggakanTahunLalu: 0,
     };
   }
 
   const { data: kasRows, error: kasError } = await supabase
     .from("kas_bulanan")
-    .select("tipe_kas, bulan, tahun")
+    .select("tipe_kas, bulan, tahun, status_bayar")
     .eq("rumah_id", rumah.id)
-    .eq("tahun", tahun);
+    .eq("status_bayar", true);
   if (kasError) throw kasError;
 
   const pesertaArisan = rumah.ikut_arisan;
@@ -241,6 +328,7 @@ export async function fetchTagihanRumah(noRumah: string): Promise<TagihanRumah> 
       tipe_kas: TipeKas;
       bulan: number;
       tahun: number;
+      status_bayar: boolean;
     }>,
     pesertaArisan,
     mulaiKasIbu: rumah.mulai_kas_ibu ?? null,

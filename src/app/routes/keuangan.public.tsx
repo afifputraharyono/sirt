@@ -317,22 +317,25 @@ function TagihanTab({
     useTagihanRumah(noRumahCek);
   const [showDetail, setShowDetail] = useState(false);
 
-  const belumPerTipe = data?.detailPerBulan.reduce(
-    (map, b) => {
-      b.items
-        .filter((i) => !i.lunas)
-        .forEach((i) => {
-          const list = map.get(i.tipe) ?? [];
-          list.push(b.bulan);
-          map.set(i.tipe, list);
-        });
-      return map;
-    },
-    new Map<TipeTagihan, number[]>(),
-  );
+  const belumPerTahun = (data?.tahunList ?? [])
+    .map((t) => {
+      const map = new Map<TipeTagihan, number[]>();
+      t.detailPerBulan.forEach((b) => {
+        b.items
+          .filter((i) => !i.lunas)
+          .forEach((i) => {
+            const list = map.get(i.tipe) ?? [];
+            list.push(b.bulan);
+            map.set(i.tipe, list);
+          });
+      });
+      return { tahun: t.tahun, perTipe: map };
+    })
+    .filter((t) => t.perTipe.size > 0);
 
+  const belumTahunIni = belumPerTahun.find((t) => t.tahun === data?.tahun);
   const bulanKurangTeks = (tipe: TipeTagihan) =>
-    (belumPerTipe?.get(tipe) ?? [])
+    (belumTahunIni?.perTipe.get(tipe) ?? [])
       .map((b) => BULAN_NAMES[b]?.slice(0, 3))
       .join(", ");
 
@@ -434,30 +437,40 @@ function TagihanTab({
             <p className="mt-1.5 text-[11.5px] opacity-85">
               Rumah {data.noRumah} · {data.tahun} · s/d{" "}
               {BULAN_NAMES[data.bulanSekarang] ?? ""}
+              {data.adaTunggakanTahunLalu
+                ? " · termasuk tunggakan tahun sebelumnya"
+                : ""}
             </p>
             <div className="mt-3 rounded-[14px] bg-white/15 px-3.5 py-3">
               <p className="text-[17px] font-extrabold">
                 {data.totalKurang} tagihan belum dibayar
               </p>
-              <div className="mt-1 flex flex-col gap-0.5 text-[11.5px] opacity-90">
-                {[...(belumPerTipe ?? new Map<TipeTagihan, number[]>()).entries()].map(
-                  ([tipe, bulans]) => (
-                    <p key={tipe}>
-                      {labelRincian(tipe)}:{" "}
-                      <span className="font-semibold">
-                        {bulans
-                          .map((b) => BULAN_NAMES[b]?.slice(0, 3))
-                          .join(", ")}
-                      </span>
-                    </p>
-                  ),
-                )}
+              <div className="mt-1 flex flex-col gap-1 text-[11.5px] opacity-90">
+                {belumPerTahun.map(({ tahun, perTipe }) => (
+                  <div key={tahun} className="flex flex-col gap-0.5">
+                    {belumPerTahun.length > 1 && (
+                      <p className="font-bold">{tahun}</p>
+                    )}
+                    {[...perTipe.entries()].map(([tipe, bulans]) => (
+                      <p key={tipe}>
+                        {labelRincian(tipe)}:{" "}
+                        <span className="font-semibold">
+                          {bulans
+                            .map((b) => BULAN_NAMES[b]?.slice(0, 3))
+                            .join(", ")}
+                        </span>
+                      </p>
+                    ))}
+                  </div>
+                ))}
               </div>
             </div>
           </div>
 
           <div className="rounded-[18px] border border-border/60 bg-card p-4">
-            <p className="text-[15px] font-bold">Rincian Tagihan</p>
+            <p className="text-[15px] font-bold">
+              Rincian Tagihan {data.tahun}
+            </p>
             <div className="mt-3 flex flex-col gap-2">
               {data.rincian.map((r) => (
                 <div

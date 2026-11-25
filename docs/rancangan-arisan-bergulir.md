@@ -40,7 +40,7 @@ Konsekuensi UI:
 
 Catatan pengurus: setoran Sep 2026 sebenarnya sudah dibayar semua, hanya belum
 dicatat admin. Karena itu **seluruh 28 peserta dianggap wajib sejak
-September** (`mulai_kewajiban.arisan = 9` tetap dipakai). Setoran Sep yang
+September** (`mulai_program.arisan = "2026-09"` tetap dipakai). Setoran Sep yang
 hilang di-backfill lewat skrip terpisah di bagian 3.4 (bukan bagian dari
 migrasi 015).
 

@@ -118,6 +118,9 @@ export default function WargaDashboard() {
             </div>
             <p className="mt-1.5 text-[11.5px] opacity-85">
               Tahun {tagihan.tahun}
+              {tagihan.adaTunggakanTahunLalu
+                ? " · termasuk tunggakan tahun sebelumnya"
+                : ""}
             </p>
           </div>
 

@@ -142,12 +142,17 @@ export default function WargaTagihan() {
             </div>
             <p className="mt-1.5 text-[11.5px] opacity-85">
               s/d {BULAN_NAMES[tagihan.bulanSekarang] ?? ""} {tagihan.tahun}
+              {tagihan.adaTunggakanTahunLalu
+                ? " · termasuk tunggakan tahun sebelumnya"
+                : ""}
             </p>
           </div>
 
           {tagihan.wajibBayar && tagihan.rincian.length > 0 && (
             <div className="rounded-[18px] border border-border/60 bg-card p-4">
-              <p className="text-[15px] font-bold">Rincian Tagihan</p>
+              <p className="text-[15px] font-bold">
+                Rincian Tagihan {tagihan.tahun}
+              </p>
               <div className="mt-3 flex flex-col gap-2">
                 {tagihan.rincian.map((r) => (
                   <div
