@@ -2,34 +2,7 @@ import { useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import type { TagihanTahun, TipeTagihan } from "@/features/tagihan/tagihan";
 import { formatRupiah } from "@/shared/utils/format";
-
-const BULAN_NAMES = [
-  "",
-  "Januari",
-  "Februari",
-  "Maret",
-  "April",
-  "Mei",
-  "Juni",
-  "Juli",
-  "Agustus",
-  "September",
-  "Oktober",
-  "November",
-  "Desember",
-];
-
-function labelRincian(tipe: TipeTagihan) {
-  if (tipe === "Bapak") return "Kas Bapak";
-  if (tipe === "Ibu") return "Kas Ibu";
-  return "Arisan";
-}
-
-function labelPill(tipe: TipeTagihan) {
-  if (tipe === "Bapak") return "Bapak";
-  if (tipe === "Ibu") return "Ibu";
-  return "Arisan";
-}
+import { BULAN_NAMES, labelTipeKas } from "@/shared/lib/labels";
 
 function bulanKurang(tahun: TagihanTahun) {
   const map = new Map<TipeTagihan, number[]>();
@@ -125,7 +98,7 @@ export function TagihanPerTahun({
                         >
                           <div className="min-w-0 flex-1 pr-2">
                             <p className="text-[13px] font-bold">
-                              {labelRincian(r.tipe)}
+                              {labelTipeKas(r.tipe)}
                             </p>
                             <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
                               {formatRupiah(r.nominal)}/bulan · {r.jumlahLunas}{" "}
@@ -170,7 +143,7 @@ export function TagihanPerTahun({
                                   : "rounded-full border border-amber-500/40 bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400"
                               }
                             >
-                              {labelPill(item.tipe)}{" "}
+                              {item.tipe}{" "}
                               {item.lunas ? "Lunas" : "Belum"}
                             </span>
                           ))}

@@ -1,6 +1,6 @@
 import { CheckCircle2, Circle, Clock, type LucideIcon } from "lucide-react";
 import type { ArisanRekap } from "@/shared/types/database";
-import { BULAN_NAMES } from "./constants";
+import { BULAN_NAMES } from "@/shared/lib/labels";
 
 export type StatusKind = "belum-diundi" | "belum-disalurkan" | "sudah-disalurkan";
 

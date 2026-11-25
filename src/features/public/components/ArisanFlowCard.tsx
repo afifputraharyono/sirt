@@ -1,26 +1,11 @@
 import { useMemo } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CheckCircle2, Circle, Clock, Repeat } from "lucide-react";
+import { Repeat } from "lucide-react";
 import { useArisanRekap } from "@/features/keuangan/hooks";
+import { STATUS_BADGE, statusOf } from "@/features/keuangan/arisan";
 import { useRondeArisanAktif } from "@/features/public/hooks";
-import type { ArisanRekap } from "@/shared/types/database";
 import { formatRupiah, formatTanggalPendek } from "@/shared/utils/format";
-
-const BULAN_NAMES = ["", "Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-
-type StatusKind = "belum-diundi" | "belum-disalurkan" | "sudah-disalurkan";
-
-function statusOf(row: ArisanRekap): StatusKind {
-  if (!row.putaran_id) return "belum-diundi";
-  if (!row.pengeluaran_id) return "belum-disalurkan";
-  return "sudah-disalurkan";
-}
-
-const STATUS_UI: Record<StatusKind, { label: string; className: string; Icon: typeof Circle }> = {
-  "belum-diundi": { label: "Belum diundi", className: "bg-muted text-muted-foreground", Icon: Circle },
-  "belum-disalurkan": { label: "Belum disalurkan", className: "bg-amber-500/15 text-amber-600 dark:text-amber-400", Icon: Clock },
-  "sudah-disalurkan": { label: "Sudah disalurkan", className: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400", Icon: CheckCircle2 },
-};
+import { BULAN_NAMES } from "@/shared/lib/labels";
 
 export function ArisanFlowCard({ bulan, tahun }: { bulan: number; tahun: number }) {
   const { data, isLoading, isError } = useArisanRekap();
@@ -101,7 +86,7 @@ export function ArisanFlowCard({ bulan, tahun }: { bulan: number; tahun: number 
             </p>
           ) : (() => {
             const kind = statusOf(current);
-            const ui = STATUS_UI[kind];
+            const ui = STATUS_BADGE[kind];
             const sisa = Math.max(0, current.nominal_terkumpul - (current.nominal_putaran ?? 0));
             return (
               <>
@@ -148,7 +133,7 @@ export function ArisanFlowCard({ bulan, tahun }: { bulan: number; tahun: number 
               <p className="mb-1.5 text-[11px] font-bold text-muted-foreground">Riwayat terakhir lintas tahun</p>
               <div className="flex flex-col gap-1.5">
                 {timeline.map((r) => {
-                  const ui = STATUS_UI[statusOf(r)];
+                  const ui = STATUS_BADGE[statusOf(r)];
                   return (
                     <div key={`${r.tahun}-${r.bulan}`} className="flex items-center justify-between gap-2">
                       <span className="text-[11.5px] font-medium">

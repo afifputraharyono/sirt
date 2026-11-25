@@ -11,31 +11,9 @@ import { useKonteksWarga, useKasSaya } from "@/features/warga/hooks";
 import { AkunBelumTertaut } from "@/features/warga/components/AkunBelumTertaut";
 import { useTagihanRumah } from "@/features/public/hooks";
 import { TagihanPerTahun } from "@/features/public/components/TagihanPerTahun";
-import type { TipeTagihan } from "@/features/tagihan/tagihan";
 import { formatRupiah, formatTanggalPendek } from "@/shared/utils/format";
 import { RT_CONFIG } from "@/shared/lib/constants";
-
-const BULAN_NAMES = [
-  "",
-  "Januari",
-  "Februari",
-  "Maret",
-  "April",
-  "Mei",
-  "Juni",
-  "Juli",
-  "Agustus",
-  "September",
-  "Oktober",
-  "November",
-  "Desember",
-];
-
-function labelTipe(tipe: TipeTagihan) {
-  if (tipe === "Bapak") return "Kas Bapak";
-  if (tipe === "Ibu") return "Kas Ibu";
-  return "Arisan";
-}
+import { BULAN_NAMES, labelTipeKas } from "@/shared/lib/labels";
 
 export default function WargaTagihan() {
   const sekarang = new Date();
@@ -194,7 +172,7 @@ export default function WargaTagihan() {
                   >
                     <div className="min-w-0 flex-1 pr-2">
                       <p className="text-[12.5px] font-bold">
-                        {labelTipe(k.tipe_kas)} · {BULAN_NAMES[k.bulan]}{" "}
+                        {labelTipeKas(k.tipe_kas)} · {BULAN_NAMES[k.bulan]}{" "}
                         {k.tahun}
                       </p>
                       <p className="mt-0.5 text-[11px] text-muted-foreground">

@@ -20,30 +20,9 @@ import { ArisanFlowCard } from "@/features/public/components/ArisanFlowCard";
 import { TagihanPerTahun } from "@/features/public/components/TagihanPerTahun";
 import { formatRupiah, formatTanggalPendek } from "@/shared/utils/format";
 import { RT_CONFIG } from "@/shared/lib/constants";
-
-const BULAN_NAMES = [
-  "",
-  "Januari",
-  "Februari",
-  "Maret",
-  "April",
-  "Mei",
-  "Juni",
-  "Juli",
-  "Agustus",
-  "September",
-  "Oktober",
-  "November",
-  "Desember",
-];
+import { BULAN_NAMES, labelTipeKas } from "@/shared/lib/labels";
 
 type TabKey = "transparansi" | "tagihan";
-
-function labelRincian(tipe: "Bapak" | "Ibu" | "Arisan") {
-  if (tipe === "Bapak") return "Kas Bapak";
-  if (tipe === "Ibu") return "Kas Ibu";
-  return "Arisan";
-}
 
 export default function KeuanganPublik() {
   const [tab, setTab] = useState<TabKey>("transparansi");
@@ -452,7 +431,7 @@ function TagihanTab({
                     )}
                     {[...perTipe.entries()].map(([tipe, bulans]) => (
                       <p key={tipe}>
-                        {labelRincian(tipe)}:{" "}
+                        {labelTipeKas(tipe)}:{" "}
                         <span className="font-semibold">
                           {bulans
                             .map((b) => BULAN_NAMES[b]?.slice(0, 3))

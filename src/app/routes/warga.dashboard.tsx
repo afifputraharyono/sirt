@@ -11,14 +11,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useKonteksWarga } from "@/features/warga/hooks";
 import { AkunBelumTertaut } from "@/features/warga/components/AkunBelumTertaut";
 import { useTagihanRumah } from "@/features/public/hooks";
-import type { TipeTagihan } from "@/features/tagihan/tagihan";
 import { formatRupiah } from "@/shared/utils/format";
-
-function labelTipe(tipe: TipeTagihan) {
-  if (tipe === "Bapak") return "Kas Bapak";
-  if (tipe === "Ibu") return "Kas Ibu";
-  return "Arisan";
-}
+import { labelTipeKas } from "@/shared/lib/labels";
 
 export default function WargaDashboard() {
   const {
@@ -134,7 +128,7 @@ export default function WargaDashboard() {
                     className="flex items-center justify-between rounded-xl bg-muted/40 px-3 py-2.5"
                   >
                     <div className="min-w-0 flex-1 pr-2">
-                      <p className="text-[13px] font-bold">{labelTipe(r.tipe)}</p>
+                      <p className="text-[13px] font-bold">{labelTipeKas(r.tipe)}</p>
                       <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
                         {formatRupiah(r.nominal)}/bulan · {r.jumlahLunas} dari{" "}
                         {r.bulanWajib} bulan lunas

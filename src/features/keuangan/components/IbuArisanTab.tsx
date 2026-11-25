@@ -11,7 +11,7 @@ import type { PeriodeHunian } from "@/features/warga/services";
 import { terhuniPada } from "@/shared/lib/hunian";
 import { formatRupiah } from "@/shared/utils/format";
 import { RT_CONFIG } from "@/shared/lib/constants";
-import { BULAN_NAMES } from "@/features/keuangan/constants";
+import { BULAN_NAMES } from "@/shared/lib/labels";
 import { IbuStatCards } from "@/features/keuangan/components/ibu/IbuStatCards";
 import { IbuRumahRow } from "@/features/keuangan/components/ibu/IbuRumahRow";
 import { CatatPembayaranDrawer } from "@/features/keuangan/components/ibu/CatatPembayaranDrawer";

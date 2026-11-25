@@ -24,7 +24,8 @@ import { useRumahList } from "@/features/warga/hooks";
 import { useAuthStore } from "@/features/auth/store";
 import type { TipeKas } from "@/shared/types/database";
 import { formatRupiah, formatTanggalPendek } from "@/shared/utils/format";
-import { BULAN_NAMES, METODE_BAYAR, SELECT_CLASS } from "../constants";
+import { BULAN_NAMES } from "@/shared/lib/labels";
+import { METODE_BAYAR, SELECT_CLASS } from "../constants";
 import { AddButton, SectionCard } from "./primitives";
 
 export function KasTab({

@@ -1,21 +1,5 @@
 import type { KategoriPengeluaran } from "@/shared/types/database";
 
-export const BULAN_NAMES = [
-  "",
-  "Januari",
-  "Februari",
-  "Maret",
-  "April",
-  "Mei",
-  "Juni",
-  "Juli",
-  "Agustus",
-  "September",
-  "Oktober",
-  "November",
-  "Desember",
-];
-
 export const KATEGORI_PENGELUARAN: KategoriPengeluaran[] = [
   "Operasional",
   "Keamanan",

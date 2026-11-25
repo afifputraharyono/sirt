@@ -13,7 +13,7 @@ import { IbuArisanTab } from "@/features/keuangan/components/IbuArisanTab";
 import { KasTab } from "@/features/keuangan/components/KasTab";
 import { JimpitanTab } from "@/features/keuangan/components/JimpitanTab";
 import { PengeluaranTab } from "@/features/keuangan/components/PengeluaranTab";
-import { BULAN_NAMES } from "@/features/keuangan/constants";
+import { BULAN_NAMES } from "@/shared/lib/labels";
 import type { TipeKas, SumberDana } from "@/shared/types/database";
 import { formatRupiah } from "@/shared/utils/format";
 import { cetakLaporanKeuangan } from "@/shared/utils/print";

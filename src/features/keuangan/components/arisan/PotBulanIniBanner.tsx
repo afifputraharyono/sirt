@@ -1,4 +1,4 @@
-import { BULAN_NAMES } from "@/features/keuangan/constants";
+import { BULAN_NAMES } from "@/shared/lib/labels";
 import { formatRupiah } from "@/shared/utils/format";
 
 export function PotBulanIniBanner({
