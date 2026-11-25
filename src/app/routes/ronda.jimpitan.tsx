@@ -19,6 +19,7 @@ import { useOfflineStore } from "@/shared/stores/offline-store";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatRupiah } from "@/shared/utils/format";
+import { todayISO } from "@/shared/lib/date";
 
 const TAPPABLE_STATUSES = ["Diambil", "Kosong"] as const;
 type TappableStatus = (typeof TAPPABLE_STATUSES)[number];
@@ -41,13 +42,8 @@ const STATUS_CONFIG: Record<
   },
 };
 
-function getTodayDate() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
 export default function RondaJimpitan() {
-  const [tanggal, setTanggal] = useState(getTodayDate);
+  const [tanggal, setTanggal] = useState(todayISO);
   const [showConfirmLock, setShowConfirmLock] = useState(false);
   const userId = useAuthStore((s) => s.user?.id);
   const userRole = useAuthStore((s) => s.role);

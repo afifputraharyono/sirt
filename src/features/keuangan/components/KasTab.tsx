@@ -25,6 +25,7 @@ import { useAuthStore } from "@/features/auth/store";
 import type { TipeKas } from "@/shared/types/database";
 import { formatRupiah, formatTanggalPendek } from "@/shared/utils/format";
 import { BULAN_NAMES } from "@/shared/lib/labels";
+import { toISODate, todayISO } from "@/shared/lib/date";
 import { METODE_BAYAR, SELECT_CLASS } from "../constants";
 import { AddButton, SectionCard } from "./primitives";
 
@@ -51,9 +52,9 @@ export function KasTab({
   const [dari, setDari] = useState(() => {
     const d = new Date();
     d.setMonth(d.getMonth() - 1);
-    return d.toISOString().split("T")[0]!;
+    return toISODate(d);
   });
-  const [sampai, setSampai] = useState(() => new Date().toISOString().split("T")[0]!);
+  const [sampai, setSampai] = useState(todayISO);
   const { data: kasRange } = useKasByRange(tipe, dari, sampai);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -204,7 +205,7 @@ export function KasTab({
           </div>
           <div className="flex flex-col gap-1.5">
             <Label className="text-[12.5px] font-bold">Tanggal Bayar *</Label>
-            <Input name="tanggal_bayar" type="date" required defaultValue={new Date().toISOString().split("T")[0]} className="rounded-[11px]" />
+            <Input name="tanggal_bayar" type="date" required defaultValue={todayISO()} className="rounded-[11px]" />
           </div>
           <div className="flex flex-col gap-1.5">
             <Label className="text-[12.5px] font-bold">Metode Bayar</Label>

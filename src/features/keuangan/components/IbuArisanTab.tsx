@@ -18,7 +18,7 @@ import { CatatPembayaranDrawer } from "@/features/keuangan/components/ibu/CatatP
 import { PenagihanMassalDrawer } from "@/features/keuangan/components/ibu/PenagihanMassalDrawer";
 import { RingkasanPeriode } from "@/features/keuangan/components/ibu/RingkasanPeriode";
 import { HapusPembayaranDialog } from "@/features/keuangan/components/ibu/HapusPembayaranDialog";
-import { todayISO } from "@/shared/lib/date";
+import { toISODate, todayISO } from "@/shared/lib/date";
 
 export function IbuArisanTab({ bulan, tahun }: { bulan: number; tahun: number }) {
   const { data: kasList, isLoading: kasLoading } = useKasByMonth("Ibu", bulan, tahun);
@@ -48,7 +48,7 @@ export function IbuArisanTab({ bulan, tahun }: { bulan: number; tahun: number })
   const [dari, setDari] = useState(() => {
     const d = new Date();
     d.setMonth(d.getMonth() - 1);
-    return d.toISOString().split("T")[0]!;
+    return toISODate(d);
   });
   const [sampai, setSampai] = useState(todayISO);
   const { data: kasRange } = useKasByRange("Ibu", dari, sampai);

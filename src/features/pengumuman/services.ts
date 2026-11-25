@@ -1,4 +1,5 @@
 import { supabase } from "@/shared/lib/supabase";
+import { todayISO } from "@/shared/lib/date";
 import type { Pengumuman } from "@/shared/types/database";
 
 export async function fetchPengumumanList() {
@@ -12,7 +13,7 @@ export async function fetchPengumumanList() {
 }
 
 export async function fetchPengumumanActive() {
-  const today = new Date().toISOString().split("T")[0];
+  const today = todayISO();
   const { data, error } = await supabase
     .from("pengumuman")
     .select("*")

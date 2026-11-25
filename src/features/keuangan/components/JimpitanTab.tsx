@@ -36,6 +36,7 @@ import type { StatusJimpitan } from "@/shared/types/database";
 import type { JimpitanWithRumah } from "@/features/keuangan/services";
 import { formatRupiah, formatTanggalPendek } from "@/shared/utils/format";
 import { RT_CONFIG } from "@/shared/lib/constants";
+import { toISODate, todayISO } from "@/shared/lib/date";
 import { SELECT_CLASS } from "../constants";
 import { AddButton, SectionCard } from "./primitives";
 
@@ -50,9 +51,9 @@ export function JimpitanTab({ bulan, tahun }: { bulan: number; tahun: number }) 
   const [dari, setDari] = useState(() => {
     const d = new Date();
     d.setMonth(d.getMonth() - 1);
-    return d.toISOString().split("T")[0]!;
+    return toISODate(d);
   });
-  const [sampai, setSampai] = useState(() => new Date().toISOString().split("T")[0]!);
+  const [sampai, setSampai] = useState(todayISO);
   const { data: jimpitanRange } = useJimpitanByRange(dari, sampai);
   const rangeTotal = jimpitanRange?.reduce((s, j) => s + j.nominal, 0) ?? 0;
 
@@ -255,7 +256,7 @@ function JimpitanPerTanggal({ bulan, tahun }: { bulan: number; tahun: number }) 
           </div>
           <div className="flex flex-col gap-1.5">
             <Label className="text-[12.5px] font-bold">Tanggal *</Label>
-            <Input name="tanggal" type="date" required defaultValue={new Date().toISOString().split("T")[0]} className="rounded-[11px]" />
+            <Input name="tanggal" type="date" required defaultValue={todayISO()} className="rounded-[11px]" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">

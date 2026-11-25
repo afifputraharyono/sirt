@@ -13,6 +13,7 @@ import {
 import { useAuthStore } from "@/features/auth/store";
 import type { Pengumuman } from "@/shared/types/database";
 import { formatTanggal } from "@/shared/utils/format";
+import { todayISO } from "@/shared/lib/date";
 
 const INPUT_CLASS = "flex h-10 w-full rounded-[11px] border border-input bg-background px-3 py-2 text-[13.5px] outline-none focus:ring-2 focus:ring-primary/30";
 const TEXTAREA_CLASS = "flex w-full rounded-[11px] border border-input bg-background px-3 py-2.5 text-[13.5px] outline-none focus:ring-2 focus:ring-primary/30 resize-y";
@@ -152,7 +153,7 @@ export default function AdminPengumuman() {
               <label htmlFor="is_pinned" className="text-[13px] font-semibold">Sematkan</label>
             </div>
             <FormField label="Mulai *">
-              <input name="tanggal_mulai" type="date" required defaultValue={editItem?.tanggal_mulai ?? new Date().toISOString().split("T")[0]} className={INPUT_CLASS} />
+              <input name="tanggal_mulai" type="date" required defaultValue={editItem?.tanggal_mulai ?? todayISO()} className={INPUT_CLASS} />
             </FormField>
             <FormField label="Berakhir">
               <input name="tanggal_berakhir" type="date" defaultValue={editItem?.tanggal_berakhir ?? ""} className={INPUT_CLASS} />

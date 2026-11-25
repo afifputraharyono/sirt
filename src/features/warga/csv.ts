@@ -5,6 +5,7 @@ import type {
   StatusPerkawinan,
   WargaDetail,
 } from "@/shared/types/database";
+import { todayISO } from "@/shared/lib/date";
 import type { RumahWithWarga } from "./services";
 
 export type ImportRowStatus = "ok" | "skip" | "error";
@@ -278,7 +279,7 @@ export function buildWargaImportPreview(
   );
   const seenNik = new Map<string, number>();
   const seenName = new Map<string, number>();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayISO();
 
   const rows: ImportRow[] = [];
 

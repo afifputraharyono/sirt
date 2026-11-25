@@ -255,7 +255,7 @@ export function ArisanPutaranTab({ bulan, tahun }: { bulan: number; tahun: numbe
   };
 
   const openMulai = () => {
-    let bulanAwal = new Date().toISOString().slice(0, 7);
+    let bulanAwal = todayISO().slice(0, 7);
     const latest = rounds[0];
     if (latest) {
       const acuan = latest.tanggal_selesai ?? latest.tanggal_mulai;

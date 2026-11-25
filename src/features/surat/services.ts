@@ -1,4 +1,5 @@
 import { supabase } from "@/shared/lib/supabase";
+import { todayISO } from "@/shared/lib/date";
 import type { StatusSurat, SuratPengantar } from "@/shared/types/database";
 
 export type SuratWithWarga = SuratPengantar & {
@@ -44,7 +45,7 @@ export async function updateSuratStatus(
   if (input.catatan_admin) update.catatan_admin = input.catatan_admin;
   if (input.diproses_oleh) update.diproses_oleh = input.diproses_oleh;
   if (input.status === "Selesai")
-    update.tanggal_selesai = new Date().toISOString().split("T")[0];
+    update.tanggal_selesai = todayISO();
 
   const { data, error } = await supabase
     .from("surat_pengantar")

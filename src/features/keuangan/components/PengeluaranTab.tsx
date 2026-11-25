@@ -27,6 +27,7 @@ import { useAuthStore } from "@/features/auth/store";
 import type { KategoriPengeluaran, SumberDana } from "@/shared/types/database";
 import type { PengeluaranWithGrup } from "@/features/keuangan/services";
 import { formatRupiah, formatTanggalPendek } from "@/shared/utils/format";
+import { toISODate, todayISO } from "@/shared/lib/date";
 import { KATEGORI_PENGELUARAN, SELECT_CLASS } from "../constants";
 import { AddButton, SectionCard } from "./primitives";
 
@@ -68,9 +69,9 @@ export function PengeluaranTab({
   const [dari, setDari] = useState(() => {
     const d = new Date();
     d.setMonth(d.getMonth() - 1);
-    return d.toISOString().split("T")[0]!;
+    return toISODate(d);
   });
-  const [sampai, setSampai] = useState(() => new Date().toISOString().split("T")[0]!);
+  const [sampai, setSampai] = useState(todayISO);
   const { data: pengeluaranRangeRaw } = usePengeluaranByRange(dari, sampai);
   const pengeluaranRange = useMemo(
     () => pengeluaranRangeRaw?.filter((p) => sumberFilter.includes(p.sumber_dana as SumberDana)) ?? [],
@@ -261,7 +262,7 @@ export function PengeluaranTab({
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <Label className="text-[12.5px] font-bold">Tanggal *</Label>
-              <Input name="tanggal" type="date" required defaultValue={new Date().toISOString().split("T")[0]} className="rounded-[11px]" />
+              <Input name="tanggal" type="date" required defaultValue={todayISO()} className="rounded-[11px]" />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label className="text-[12.5px] font-bold">Sumber Dana *</Label>
@@ -308,7 +309,7 @@ export function PengeluaranTab({
           </div>
           <div className="flex flex-col gap-1.5">
             <Label className="text-[12.5px] font-bold">Tanggal *</Label>
-            <Input name="tanggal" type="date" required defaultValue={new Date().toISOString().split("T")[0]} className="rounded-[11px]" />
+            <Input name="tanggal" type="date" required defaultValue={todayISO()} className="rounded-[11px]" />
           </div>
           <div className="flex flex-col gap-1.5">
             <Label className="text-[12.5px] font-bold">Catatan</Label>
