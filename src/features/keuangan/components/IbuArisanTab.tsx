@@ -18,8 +18,7 @@ import { CatatPembayaranDrawer } from "@/features/keuangan/components/ibu/CatatP
 import { PenagihanMassalDrawer } from "@/features/keuangan/components/ibu/PenagihanMassalDrawer";
 import { RingkasanPeriode } from "@/features/keuangan/components/ibu/RingkasanPeriode";
 import { HapusPembayaranDialog } from "@/features/keuangan/components/ibu/HapusPembayaranDialog";
-
-const TODAY = new Date().toISOString().split("T")[0]!;
+import { todayISO } from "@/shared/lib/date";
 
 export function IbuArisanTab({ bulan, tahun }: { bulan: number; tahun: number }) {
   const { data: kasList, isLoading: kasLoading } = useKasByMonth("Ibu", bulan, tahun);
@@ -35,13 +34,13 @@ export function IbuArisanTab({ bulan, tahun }: { bulan: number; tahun: number })
   const [rumahId, setRumahId] = useState("");
   const [bayarKas, setBayarKas] = useState(true);
   const [bayarArisan, setBayarArisan] = useState(false);
-  const [tanggal, setTanggal] = useState(TODAY);
+  const [tanggal, setTanggal] = useState(todayISO);
   const [metode, setMetode] = useState("");
   const [keterangan, setKeterangan] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; label: string } | null>(null);
 
   const [bulkOpen, setBulkOpen] = useState(false);
-  const [bulkTanggal, setBulkTanggal] = useState(TODAY);
+  const [bulkTanggal, setBulkTanggal] = useState(todayISO);
   const [bulkMetode, setBulkMetode] = useState("");
   const [bulkSelected, setBulkSelected] = useState<Set<string>>(new Set());
 
@@ -51,7 +50,7 @@ export function IbuArisanTab({ bulan, tahun }: { bulan: number; tahun: number })
     d.setMonth(d.getMonth() - 1);
     return d.toISOString().split("T")[0]!;
   });
-  const [sampai, setSampai] = useState(TODAY);
+  const [sampai, setSampai] = useState(todayISO);
   const { data: kasRange } = useKasByRange("Ibu", dari, sampai);
   const { data: arisanRange } = useKasByRange("Arisan", dari, sampai);
 
@@ -103,7 +102,7 @@ export function IbuArisanTab({ bulan, tahun }: { bulan: number; tahun: number })
     setRumahId(rumah?.id ?? "");
     setBayarKas(rumah ? !kasMap.has(rumah.id) : true);
     setBayarArisan(rumah ? rumah.ikut_arisan && !arisanMap.has(rumah.id) : false);
-    setTanggal(TODAY);
+    setTanggal(todayISO());
     setMetode("");
     setKeterangan("");
     setDrawerOpen(true);
@@ -133,7 +132,7 @@ export function IbuArisanTab({ bulan, tahun }: { bulan: number; tahun: number })
       bulan,
       tahun,
       status_bayar: true,
-      tanggal_bayar: tanggal || TODAY,
+      tanggal_bayar: tanggal || todayISO(),
       metode_bayar: metode || null,
       keterangan: keterangan || null,
       dicatat_oleh: user?.id ?? "",
@@ -195,7 +194,7 @@ export function IbuArisanTab({ bulan, tahun }: { bulan: number; tahun: number })
       if (r.ikut_arisan && !arisanMap.has(r.id)) initial.add(`${r.id}:Arisan`);
     });
     setBulkSelected(initial);
-    setBulkTanggal(TODAY);
+    setBulkTanggal(todayISO());
     setBulkMetode("");
     setBulkOpen(true);
   };
@@ -225,7 +224,7 @@ export function IbuArisanTab({ bulan, tahun }: { bulan: number; tahun: number })
       bulan,
       tahun,
       status_bayar: true,
-      tanggal_bayar: bulkTanggal || TODAY,
+      tanggal_bayar: bulkTanggal || todayISO(),
       metode_bayar: bulkMetode || null,
       keterangan: null,
       dicatat_oleh: user?.id ?? "",

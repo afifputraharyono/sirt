@@ -24,8 +24,7 @@ import { TutupRondeDialog } from "@/features/keuangan/components/arisan/TutupRon
 import { TalanganDialog } from "@/features/keuangan/components/arisan/TalanganDialog";
 import { SalurkanDialog } from "@/features/keuangan/components/arisan/SalurkanDialog";
 import { HapusPutaranDialog } from "@/features/keuangan/components/arisan/HapusPutaranDialog";
-
-const TODAY = new Date().toISOString().split("T")[0] ?? "";
+import { todayISO } from "@/shared/lib/date";
 
 export function ArisanPutaranTab({ bulan, tahun }: { bulan: number; tahun: number }) {
   const { data: rekap, isLoading: rekapLoading, isError, refetch } = useArisanRekap();
@@ -184,18 +183,18 @@ export function ArisanPutaranTab({ bulan, tahun }: { bulan: number; tahun: numbe
   const [formPeriode, setFormPeriode] = useState("");
   const [pemenangId, setPemenangId] = useState("");
   const [nominal, setNominal] = useState("");
-  const [tanggalUndi, setTanggalUndi] = useState(TODAY);
+  const [tanggalUndi, setTanggalUndi] = useState(todayISO);
   const [salurkanSekarang, setSalurkanSekarang] = useState(true);
-  const [tanggalSalur, setTanggalSalur] = useState(TODAY);
+  const [tanggalSalur, setTanggalSalur] = useState(todayISO);
   const [catatan, setCatatan] = useState("");
   const [talangan, setTalangan] = useState<SimpanArisanPutaranInput | null>(null);
 
   const [salurTarget, setSalurTarget] = useState<ArisanRekap | null>(null);
-  const [salurTanggal, setSalurTanggal] = useState(TODAY);
+  const [salurTanggal, setSalurTanggal] = useState(todayISO);
   const [deleteTarget, setDeleteTarget] = useState<ArisanRekap | null>(null);
 
   const [tutupOpen, setTutupOpen] = useState(false);
-  const [tutupTanggal, setTutupTanggal] = useState(TODAY);
+  const [tutupTanggal, setTutupTanggal] = useState(todayISO);
 
   const [mulaiOpen, setMulaiOpen] = useState(false);
   const [mulaiBulan, setMulaiBulan] = useState("");
@@ -235,9 +234,9 @@ export function ArisanPutaranTab({ bulan, tahun }: { bulan: number; tahun: numbe
     setFormPeriode(key);
     setPemenangId("");
     setNominal(pot > 0 ? String(pot) : "");
-    setTanggalUndi(TODAY);
+    setTanggalUndi(todayISO());
     setSalurkanSekarang(true);
-    setTanggalSalur(TODAY);
+    setTanggalSalur(todayISO());
     setCatatan("");
     setSheetOpen(true);
   };
@@ -248,9 +247,9 @@ export function ArisanPutaranTab({ bulan, tahun }: { bulan: number; tahun: numbe
     setFormPeriode(kunciPeriode(row.tahun, row.bulan));
     setPemenangId(row.pemenang_rumah_id ?? "");
     setNominal(String(row.nominal_putaran ?? row.nominal_terkumpul));
-    setTanggalUndi(row.tanggal_undi ?? TODAY);
+    setTanggalUndi(row.tanggal_undi ?? todayISO());
     setSalurkanSekarang(false);
-    setTanggalSalur(TODAY);
+    setTanggalSalur(todayISO());
     setCatatan(row.catatan ?? "");
     setSheetOpen(true);
   };
@@ -303,7 +302,7 @@ export function ArisanPutaranTab({ bulan, tahun }: { bulan: number; tahun: numbe
       tanggal_undi: tanggalUndi || null,
       catatan: catatan || null,
       salurkan: salurkanSekarang,
-      tanggal_salur: salurkanSekarang ? tanggalSalur || TODAY : null,
+      tanggal_salur: salurkanSekarang ? tanggalSalur || todayISO() : null,
     };
   };
 
@@ -350,7 +349,7 @@ export function ArisanPutaranTab({ bulan, tahun }: { bulan: number; tahun: numbe
   const handleTutup = () => {
     if (!selected) return;
     tutup.mutate(
-      { rondeId: selected.id, tanggal: tutupTanggal || TODAY },
+      { rondeId: selected.id, tanggal: tutupTanggal || todayISO() },
       { onSuccess: () => setTutupOpen(false) },
     );
   };
@@ -441,7 +440,7 @@ export function ArisanPutaranTab({ bulan, tahun }: { bulan: number; tahun: numbe
                 bisaDitutup={bisaDitutup}
                 alasanTutup={alasanTutup}
                 onTutup={() => {
-                  setTutupTanggal(TODAY);
+                  setTutupTanggal(todayISO());
                   setTutupOpen(true);
                 }}
               />
@@ -522,7 +521,7 @@ export function ArisanPutaranTab({ bulan, tahun }: { bulan: number; tahun: numbe
                         onCatat={() => openCreate(row.tahun, row.bulan)}
                         onSalurkan={() => {
                           setSalurTarget(row);
-                          setSalurTanggal(TODAY);
+                          setSalurTanggal(todayISO());
                         }}
                         onHapus={() => setDeleteTarget(row)}
                       />

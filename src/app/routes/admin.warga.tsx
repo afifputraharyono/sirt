@@ -30,7 +30,7 @@ import { RumahFormDrawer } from "@/features/warga/components/RumahFormDrawer";
 import { WargaFormDrawer } from "@/features/warga/components/WargaFormDrawer";
 import { ImportWargaDrawer } from "@/features/warga/components/ImportWargaDrawer";
 import { AkunHasilDialog } from "@/features/warga/components/AkunHasilDialog";
-import { TODAY } from "@/features/warga/constants";
+import { todayISO } from "@/shared/lib/date";
 
 export default function AdminWarga() {
   const { data: rumahList, isLoading } = useRumahList();
@@ -50,8 +50,8 @@ export default function AdminWarga() {
   const [wargaDrawer, setWargaDrawer] = useState(false);
   const [editRumah, setEditRumah] = useState<RumahWithWarga | null>(null);
   const [formStatus, setFormStatus] = useState<StatusHunian>("Tetap");
-  const [tanggalKosong, setTanggalKosong] = useState(TODAY);
-  const [tanggalMulaiHunian, setTanggalMulaiHunian] = useState(TODAY);
+  const [tanggalKosong, setTanggalKosong] = useState(todayISO);
+  const [tanggalMulaiHunian, setTanggalMulaiHunian] = useState(todayISO);
   const [tunggakanDialihkan, setTunggakanDialihkan] = useState(true);
   const [editWarga, setEditWarga] = useState<WargaDetail | null>(null);
   const [wargaRumahId, setWargaRumahId] = useState("");
@@ -188,9 +188,9 @@ export default function AdminWarga() {
   const openRumahDrawer = (rumah: RumahWithWarga | null) => {
     setEditRumah(rumah);
     setFormStatus(rumah?.status_hunian ?? "Tetap");
-    setTanggalKosong(TODAY);
+    setTanggalKosong(todayISO());
     setTanggalMulaiHunian(
-      rumah?.status_hunian === "Kosong" ? TODAY : (rumah?.mulai_kas_ibu ?? TODAY)
+      rumah?.status_hunian === "Kosong" ? todayISO() : (rumah?.mulai_kas_ibu ?? todayISO())
     );
     setTunggakanDialihkan(true);
     setRumahDrawer(true);
