@@ -2,10 +2,11 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useOnlineStatus } from "@/shared/hooks/useOnlineStatus";
 import { useOfflineStore } from "@/shared/stores/offline-store";
+import type { MutationInput, MutationKey } from "@/shared/lib/mutation-registry";
 
-interface OfflineMutationOptions<TData, TVariables> {
-  mutationFn: (variables: TVariables) => Promise<TData>;
-  offlineKey: string;
+interface OfflineMutationOptions<K extends MutationKey, TData> {
+  mutationFn: (variables: MutationInput<K>) => Promise<TData>;
+  offlineKey: K;
   queryKeyToInvalidate: readonly unknown[];
   onSuccess?: () => void;
   onError?: (err: Error) => void;
@@ -13,8 +14,8 @@ interface OfflineMutationOptions<TData, TVariables> {
 
 const OFFLINE_MARKER = Symbol("offline-queued");
 
-export function useOfflineMutation<TData, TVariables>(
-  options: OfflineMutationOptions<TData, TVariables>
+export function useOfflineMutation<K extends MutationKey, TData>(
+  options: OfflineMutationOptions<K, TData>
 ) {
   const isOnline = useOnlineStatus();
   const addAction = useOfflineStore((s) => s.addAction);
@@ -22,8 +23,8 @@ export function useOfflineMutation<TData, TVariables>(
 
   const { offlineKey, queryKeyToInvalidate, onSuccess, onError } = options;
 
-  return useMutation<TData, Error, TVariables>({
-    mutationFn: async (variables: TVariables) => {
+  return useMutation<TData, Error, MutationInput<K>>({
+    mutationFn: async (variables: MutationInput<K>) => {
       if (!isOnline) {
         addAction({
           mutationKey: offlineKey,

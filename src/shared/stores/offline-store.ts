@@ -2,29 +2,36 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { toast } from "sonner";
 import { idbStorage } from "@/shared/lib/idb-storage";
-import { mutationRegistry } from "@/shared/lib/mutation-registry";
+import {
+  mutationRegistry,
+  runMutation,
+  type MutationInput,
+  type MutationKey,
+} from "@/shared/lib/mutation-registry";
 import { queryClient } from "@/shared/lib/query-client";
 
-export interface OfflineAction {
+export type OfflineActionStatus = "pending" | "syncing" | "error";
+
+export interface OfflineAction<K extends MutationKey = MutationKey> {
   id: string;
-  mutationKey: string;
-  variables: unknown;
+  mutationKey: K;
+  variables: MutationInput<K>;
   queryKeyToInvalidate: readonly unknown[];
   timestamp: number;
-  status: "pending" | "syncing" | "error";
+  status: OfflineActionStatus;
   errorMessage?: string;
 }
 
 interface OfflineState {
   pendingActions: OfflineAction[];
   isSyncing: boolean;
-  addAction: (
-    action: Omit<OfflineAction, "id" | "timestamp" | "status">
+  addAction: <K extends MutationKey>(
+    action: Omit<OfflineAction<K>, "id" | "timestamp" | "status">
   ) => void;
   removeAction: (id: string) => void;
-  updateActionVariables: (
-    mutationKey: string,
-    updater: (variables: unknown) => unknown
+  updateActionVariables: <K extends MutationKey>(
+    mutationKey: K,
+    updater: (variables: MutationInput<K>) => MutationInput<K>
   ) => void;
   syncAll: () => Promise<void>;
 }
@@ -57,7 +64,12 @@ export const useOfflineStore = create<OfflineState>()(
         set((state) => ({
           pendingActions: state.pendingActions.map((a) =>
             a.mutationKey === mutationKey && a.status === "pending"
-              ? { ...a, variables: updater(a.variables) }
+              ? {
+                  ...a,
+                  variables: updater(
+                    a.variables as MutationInput<typeof mutationKey>
+                  ),
+                }
               : a
           ),
         }));
@@ -74,8 +86,7 @@ export const useOfflineStore = create<OfflineState>()(
         const keysToInvalidate = new Set<string>();
 
         for (const action of pendingActions) {
-          const fn = mutationRegistry[action.mutationKey];
-          if (!fn) {
+          if (!(action.mutationKey in mutationRegistry)) {
             set((state) => ({
               pendingActions: state.pendingActions.map((a) =>
                 a.id === action.id
@@ -98,7 +109,7 @@ export const useOfflineStore = create<OfflineState>()(
           }));
 
           try {
-            await fn(action.variables);
+            await runMutation(action.mutationKey, action.variables);
             set((state) => ({
               pendingActions: state.pendingActions.filter(
                 (a) => a.id !== action.id

@@ -163,14 +163,10 @@ export default function RondaJimpitan() {
         );
 
       if (!isOnline && pendingExists) {
-        updateActionVariables(
-          "jimpitan:upsert-batch",
-          (variables) =>
-            (variables as Record<string, unknown>[]).map((item) =>
-              (item as { rumah_id: string }).rumah_id === rumahId
-                ? { ...item, status: newStatus }
-                : item
-            )
+        updateActionVariables("jimpitan:upsert-batch", (items) =>
+          items.map((item) =>
+            item.rumah_id === rumahId ? { ...item, status: newStatus } : item
+          )
         );
       } else {
         upsertBatch.mutate([
