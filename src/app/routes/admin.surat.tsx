@@ -33,7 +33,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function AdminSurat() {
-  const [filterStatus, setFilterStatus] = useState<string>("");
+  const [filterStatus, setFilterStatus] = useState<StatusSurat | "">("");
   const { data: suratList, isLoading } = useSuratList(filterStatus || undefined);
   const { data: rumahList } = useRumahList();
   const createSurat = useCreateSurat();
@@ -42,7 +42,7 @@ export default function AdminSurat() {
   const user = useAuthStore((s) => s.user);
 
   const [createDrawer, setCreateDrawer] = useState(false);
-  const [statusDrawer, setStatusDrawer] = useState<{ id: string; current: string } | null>(null);
+  const [statusDrawer, setStatusDrawer] = useState<{ id: string; current: StatusSurat } | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const allWarga = rumahList?.flatMap((r) => r.warga_detail.filter((w) => w.is_active)) ?? [];
@@ -87,7 +87,7 @@ export default function AdminSurat() {
     const fd = new FormData(e.currentTarget);
     updateStatus.mutate({
       id: statusDrawer.id,
-      status: fd.get("status") as string,
+      status: fd.get("status") as StatusSurat,
       catatan_admin: (fd.get("catatan_admin") as string) || undefined,
       diproses_oleh: user?.id,
     }, { onSuccess: () => setStatusDrawer(null) });

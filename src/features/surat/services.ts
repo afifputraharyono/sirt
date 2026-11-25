@@ -1,11 +1,11 @@
 import { supabase } from "@/shared/lib/supabase";
-import type { SuratPengantar } from "@/shared/types/database";
+import type { StatusSurat, SuratPengantar } from "@/shared/types/database";
 
 export type SuratWithWarga = SuratPengantar & {
   warga_detail: { nama_lengkap: string };
 };
 
-export async function fetchSuratList(status?: string) {
+export async function fetchSuratList(status?: StatusSurat) {
   let query = supabase
     .from("surat_pengantar")
     .select("*, warga_detail(nama_lengkap)")
@@ -33,9 +33,14 @@ export async function createSurat(input: CreateSuratInput) {
 
 export async function updateSuratStatus(
   id: string,
-  input: { status: string; catatan_admin?: string; diproses_oleh?: string }
+  input: { status: StatusSurat; catatan_admin?: string; diproses_oleh?: string }
 ) {
-  const update: Record<string, unknown> = { status: input.status };
+  const update: Partial<
+    Pick<
+      SuratPengantar,
+      "status" | "catatan_admin" | "diproses_oleh" | "tanggal_selesai"
+    >
+  > = { status: input.status };
   if (input.catatan_admin) update.catatan_admin = input.catatan_admin;
   if (input.diproses_oleh) update.diproses_oleh = input.diproses_oleh;
   if (input.status === "Selesai")

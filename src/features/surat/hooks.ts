@@ -8,8 +8,9 @@ import {
   type CreateSuratInput,
 } from "./services";
 import { toast } from "sonner";
+import type { StatusSurat } from "@/shared/types/database";
 
-export function useSuratList(status?: string) {
+export function useSuratList(status?: StatusSurat) {
   return useQuery({
     queryKey: queryKeys.surat.list({ status }),
     queryFn: () => fetchSuratList(status),
@@ -36,7 +37,7 @@ export function useUpdateSuratStatus() {
       ...input
     }: {
       id: string;
-      status: string;
+      status: StatusSurat;
       catatan_admin?: string;
       diproses_oleh?: string;
     }) => updateSuratStatus(id, input),

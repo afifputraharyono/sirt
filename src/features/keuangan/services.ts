@@ -466,7 +466,7 @@ export async function mulaiArisanRonde(input: MulaiArisanRondeInput) {
   const { data, error } = await supabase.rpc("fn_mulai_arisan_ronde", {
     p_tanggal_mulai: input.tanggal_mulai,
     p_anggota: input.anggota,
-    p_catatan: input.catatan,
+    p_catatan: input.catatan ?? undefined,
   });
   if (error) throw error;
   return data as ArisanRonde;
@@ -512,10 +512,10 @@ export async function simpanArisanPutaran(input: SimpanArisanPutaranInput) {
     p_tahun: input.tahun,
     p_pemenang_rumah_id: input.pemenang_rumah_id,
     p_nominal: input.nominal,
-    p_tanggal_undi: input.tanggal_undi,
-    p_catatan: input.catatan,
+    p_tanggal_undi: input.tanggal_undi ?? undefined,
+    p_catatan: input.catatan ?? undefined,
     p_salurkan: input.salurkan,
-    p_tanggal_salur: input.tanggal_salur,
+    p_tanggal_salur: input.tanggal_salur ?? undefined,
   });
   if (error) throw error;
   return data as ArisanPutaran;

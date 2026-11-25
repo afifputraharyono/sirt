@@ -108,7 +108,7 @@ export async function kosongkanRumah(
   const { data, error } = await supabase.rpc("fn_kosongkan_rumah", {
     p_rumah_id: input.rumahId,
     p_tanggal_kosong: input.tanggalKosong,
-    p_catatan: input.catatan ?? null,
+    p_catatan: input.catatan ?? undefined,
   });
   if (error) throw error;
   return data as RumahHunian;
@@ -131,8 +131,8 @@ export async function huniRumah(
     p_tanggal_mulai: input.tanggalMulai,
     p_status_hunian: input.statusHunian,
     p_tunggakan_dialihkan: input.tunggakanDialihkan ?? true,
-    p_mulai_kas_ibu: input.mulaiKasIbu ?? null,
-    p_catatan: input.catatan ?? null,
+    p_mulai_kas_ibu: input.mulaiKasIbu ?? undefined,
+    p_catatan: input.catatan ?? undefined,
   });
   if (error) throw error;
   return data as RumahHunian;
