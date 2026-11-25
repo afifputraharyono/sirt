@@ -58,6 +58,9 @@ export default function WargaProfil() {
 
   useEffect(() => {
     if (!profilId) return;
+    // Form lokal diselaraskan sekali saat profil termuat; akan diganti pola
+    // form ber-key saat halaman ini dipecah (lihat rencana refactor route).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setNama(profilNama ?? "");
     setNoHp(profilHp ?? "");
   }, [profilId, profilNama, profilHp]);

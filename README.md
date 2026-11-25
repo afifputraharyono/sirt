@@ -66,6 +66,12 @@ npm run dev
 | `npm run build`   | Type check + production build  |
 | `npm run preview` | Preview production build lokal |
 | `npm run lint`    | Jalankan ESLint                |
+| `npm test`        | Jalankan unit test (Vitest)    |
+
+> **TypeScript di-alias.** `typescript` menunjuk ke `@typescript/typescript6`
+> agar `typescript-eslint` tetap berjalan (API TS 7 belum didukung), sedangkan
+> build memakai TS 7 native lewat alias `@typescript/native` (`tsc`). Jangan
+> mengganti alias ini tanpa memeriksa dukungan typescript-eslint terbaru.
 
 ## Struktur Folder
 
@@ -108,8 +114,10 @@ src/
 CI/CD menggunakan GitHub Actions. Setiap push ke `main` otomatis:
 
 1. Type check (`tsc --noEmit`)
-2. Build (`vite build`)
-3. Deploy ke Netlify
+2. Lint (`eslint . --max-warnings=0`)
+3. Unit test (`vitest run`)
+4. Build (`tsc -b && vite build`)
+5. Deploy ke Netlify
 
 Pull request mendapat preview deploy tersendiri.
 
