@@ -60,6 +60,7 @@ export const queryKeys = {
   },
   public: {
     all: ["public"] as const,
+    rondeAktif: () => [...queryKeys.public.all, "ronde-aktif"] as const,
     tagihan: (noRumah: string, tahun: number) =>
       [...queryKeys.public.all, "tagihan", noRumah, tahun] as const,
   },

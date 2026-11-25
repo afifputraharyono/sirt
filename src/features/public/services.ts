@@ -341,6 +341,41 @@ export function hitungTagihan(params: {
   };
 }
 
+// ==================== ARISAN ====================
+
+export interface RondeArisanAktif {
+  id: string;
+  nomor: number;
+  tanggal_mulai: string;
+  jumlahAnggota: number;
+}
+
+export async function fetchRondeArisanAktif(): Promise<RondeArisanAktif | null> {
+  const { data: ronde, error } = await supabase
+    .from("arisan_ronde")
+    .select("id, nomor, tanggal_mulai")
+    .is("tanggal_selesai", null)
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  if (!ronde) return null;
+
+  const { data: anggota, error: anggotaError } = await supabase
+    .from("v_arisan_anggota_publik")
+    .select("rumah_id")
+    .eq("ronde_id", ronde.id);
+  if (anggotaError) throw anggotaError;
+
+  return {
+    id: ronde.id,
+    nomor: ronde.nomor,
+    tanggal_mulai: ronde.tanggal_mulai,
+    jumlahAnggota: new Set(
+      ((anggota ?? []) as Array<{ rumah_id: string }>).map((a) => a.rumah_id)
+    ).size,
+  };
+}
+
 export async function fetchTagihanRumah(noRumah: string): Promise<TagihanRumah> {
   const sekarang = new Date();
   const tahun = sekarang.getFullYear();

@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/shared/lib/query-keys";
-import { fetchJadwalRondaPublic, fetchStatistikRT, fetchTagihanRumah } from "./services";
+import { fetchJadwalRondaPublic, fetchRondeArisanAktif, fetchStatistikRT, fetchTagihanRumah } from "./services";
 
 export function useJadwalRondaPublic(periodeId?: string) {
   return useQuery({
@@ -13,6 +13,14 @@ export function useStatistikRT() {
   return useQuery({
     queryKey: ["statistik-rt"],
     queryFn: fetchStatistikRT,
+  });
+}
+
+export function useRondeArisanAktif() {
+  return useQuery({
+    queryKey: queryKeys.public.rondeAktif(),
+    queryFn: fetchRondeArisanAktif,
+    staleTime: 60_000,
   });
 }
 

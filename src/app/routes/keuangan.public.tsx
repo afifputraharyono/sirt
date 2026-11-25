@@ -12,13 +12,12 @@ import {
   Home,
   RotateCw,
   Info,
-  ChevronDown,
-  ChevronRight,
 } from "lucide-react";
 import { useSaldoKas, usePengeluaran } from "@/features/keuangan/hooks";
 import { useTagihanRumah } from "@/features/public/hooks";
 import type { TipeTagihan } from "@/features/public/services";
 import { ArisanFlowCard } from "@/features/public/components/ArisanFlowCard";
+import { TagihanPerTahun } from "@/features/public/components/TagihanPerTahun";
 import { formatRupiah, formatTanggalPendek } from "@/shared/utils/format";
 import { RT_CONFIG } from "@/shared/lib/constants";
 
@@ -43,12 +42,6 @@ type TabKey = "transparansi" | "tagihan";
 function labelRincian(tipe: "Bapak" | "Ibu" | "Arisan") {
   if (tipe === "Bapak") return "Kas Bapak";
   if (tipe === "Ibu") return "Kas Ibu";
-  return "Arisan";
-}
-
-function labelPill(tipe: "Bapak" | "Ibu" | "Arisan") {
-  if (tipe === "Bapak") return "Bapak";
-  if (tipe === "Ibu") return "Ibu";
   return "Arisan";
 }
 
@@ -315,7 +308,6 @@ function TagihanTab({
 }) {
   const { data, isLoading, isFetching, isError, refetch } =
     useTagihanRumah(noRumahCek);
-  const [showDetail, setShowDetail] = useState(false);
 
   const belumPerTahun = (data?.tahunList ?? [])
     .map((t) => {
@@ -332,12 +324,6 @@ function TagihanTab({
       return { tahun: t.tahun, perTipe: map };
     })
     .filter((t) => t.perTipe.size > 0);
-
-  const belumTahunIni = belumPerTahun.find((t) => t.tahun === data?.tahun);
-  const bulanKurangTeks = (tipe: TipeTagihan) =>
-    (belumTahunIni?.perTipe.get(tipe) ?? [])
-      .map((b) => BULAN_NAMES[b]?.slice(0, 3))
-      .join(", ");
 
   return (
     <div className="flex flex-col gap-3">
@@ -448,8 +434,8 @@ function TagihanTab({
               )}
             </div>
             <p className="mt-1.5 text-[11.5px] opacity-85">
-              Rumah {data.noRumah} · {data.tahun} · s/d{" "}
-              {BULAN_NAMES[data.bulanSekarang] ?? ""}
+              Rumah {data.noRumah} · s/d{" "}
+              {BULAN_NAMES[data.bulanSekarang] ?? ""} {data.tahun}
               {data.adaTunggakanTahunLalu
                 ? " · termasuk tunggakan tahun sebelumnya"
                 : ""}
@@ -480,88 +466,12 @@ function TagihanTab({
             </div>
           </div>
 
-          <div className="rounded-[18px] border border-border/60 bg-card p-4">
-            <p className="text-[15px] font-bold">
-              Rincian Tagihan {data.tahun}
-            </p>
-            <div className="mt-3 flex flex-col gap-2">
-              {data.rincian.map((r) => (
-                <div
-                  key={r.tipe}
-                  className="flex items-center justify-between rounded-xl bg-muted/40 px-3 py-2.5"
-                >
-                  <div className="min-w-0 flex-1 pr-2">
-                    <p className="text-[13px] font-bold">
-                      {labelRincian(r.tipe)}
-                    </p>
-                    <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
-                      {formatRupiah(r.nominal)}/bulan · {r.jumlahLunas} dari{" "}
-                      {r.bulanWajib} bulan lunas
-                    </p>
-                  </div>
-                  {r.jumlahKurang === 0 ? (
-                    <span className="shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-bold text-primary">
-                      Lunas
-                    </span>
-                  ) : (
-                    <div className="shrink-0 text-right">
-                      <p className="font-mono text-[12.5px] font-extrabold text-amber-600 dark:text-amber-400">
-                        {formatRupiah(r.nominalKurang)}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground">
-                        Belum {bulanKurangTeks(r.tipe)}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-[18px] border border-border/60 bg-card p-4">
-            <button
-              type="button"
-              onClick={() => setShowDetail((v) => !v)}
-              className="flex w-full items-center justify-between"
-            >
-              <span className="text-[15px] font-bold">Riwayat Bulanan</span>
-              {showDetail ? (
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
-              ) : (
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-              )}
-            </button>
-
-            {showDetail && (
-              <div className="mt-3 flex flex-col gap-2.5">
-                {[...data.detailPerBulan].reverse().map((b) => (
-                  <div
-                    key={b.bulan}
-                    className="flex items-start justify-between gap-2 rounded-xl bg-muted/40 px-3 py-2.5"
-                  >
-                    <p className="text-[12.5px] font-bold">
-                      {BULAN_NAMES[b.bulan] ?? ""}
-                    </p>
-                    <div className="flex flex-wrap justify-end gap-1.5">
-                      {b.items.map((item) => (
-                        <span
-                          key={`${b.bulan}-${item.tipe}`}
-                          className={
-                            item.lunas
-                              ? "rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-bold text-primary"
-                              : "rounded-full border border-amber-500/40 bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400"
-                          }
-                        >
-                          {labelPill(item.tipe)}{" "}
-                          {item.lunas ? "Lunas" : "Belum"}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          {data.wajibBayar && data.tahunList.length > 0 && (
+            <TagihanPerTahun
+              tahunList={data.tahunList}
+              tahunSekarang={data.tahun}
+            />
+          )}
 
           <div className="flex flex-col gap-1">
             <p className="flex items-start gap-1.5 text-[11.5px] leading-relaxed text-muted-foreground">

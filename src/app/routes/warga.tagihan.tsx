@@ -10,6 +10,7 @@ import { PageHeader } from "@/shared/components/layout/PageHeader";
 import { useKonteksWarga, useKasSaya } from "@/features/warga/hooks";
 import { AkunBelumTertaut } from "@/features/warga/components/AkunBelumTertaut";
 import { useTagihanRumah } from "@/features/public/hooks";
+import { TagihanPerTahun } from "@/features/public/components/TagihanPerTahun";
 import type { TipeTagihan } from "@/features/public/services";
 import { formatRupiah, formatTanggalPendek } from "@/shared/utils/format";
 import { RT_CONFIG } from "@/shared/lib/constants";
@@ -37,7 +38,9 @@ function labelTipe(tipe: TipeTagihan) {
 }
 
 export default function WargaTagihan() {
-  const tahun = new Date().getFullYear();
+  const sekarang = new Date();
+  const tahun = sekarang.getFullYear();
+  const bulanSekarang = sekarang.getMonth() + 1;
   const {
     data: ctx,
     isLoading,
@@ -101,7 +104,7 @@ export default function WargaTagihan() {
     <div className="flex flex-col gap-3.5">
       <PageHeader
         title="Tagihan Saya"
-        description={`Rumah ${ctx.rumah.no_rumah} · Tahun ${tahun}`}
+        description={`Rumah ${ctx.rumah.no_rumah} · s/d ${BULAN_NAMES[bulanSekarang] ?? ""} ${tahun}`}
       />
 
       {tagihanLoading ? (
@@ -161,73 +164,12 @@ export default function WargaTagihan() {
             </p>
           </div>
 
-          {tagihan.wajibBayar && tagihan.rincian.length > 0 && (
-            <div className="rounded-[18px] border border-border/60 bg-card p-4">
-              <p className="text-[15px] font-bold">
-                Rincian Tagihan {tagihan.tahun}
-              </p>
-              <div className="mt-3 flex flex-col gap-2">
-                {tagihan.rincian.map((r) => (
-                  <div
-                    key={r.tipe}
-                    className="flex items-center justify-between rounded-xl bg-muted/40 px-3 py-2.5"
-                  >
-                    <div className="min-w-0 flex-1 pr-2">
-                      <p className="text-[13px] font-bold">{labelTipe(r.tipe)}</p>
-                      <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
-                        {formatRupiah(r.nominal)}/bulan · {r.jumlahLunas} dari{" "}
-                        {r.bulanWajib} bulan lunas
-                      </p>
-                    </div>
-                    {r.jumlahKurang === 0 ? (
-                      <span className="shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-bold text-primary">
-                        Lunas
-                      </span>
-                    ) : (
-                      <span className="shrink-0 font-mono text-[12.5px] font-extrabold text-amber-600 dark:text-amber-400">
-                        {formatRupiah(r.nominalKurang)}
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
+          {tagihan.wajibBayar && tagihan.tahunList.length > 0 && (
+            <TagihanPerTahun
+              tahunList={tagihan.tahunList}
+              tahunSekarang={tagihan.tahun}
+            />
           )}
-
-          <div className="rounded-[18px] border border-border/60 bg-card p-4">
-            <p className="text-[15px] font-bold">Riwayat Bulanan</p>
-            <div className="mt-3 flex flex-col gap-2.5">
-              {[...tagihan.detailPerBulan].reverse().map((b) => (
-                <div
-                  key={b.bulan}
-                  className="flex items-start justify-between gap-2 rounded-xl bg-muted/40 px-3 py-2.5"
-                >
-                  <p className="text-[12.5px] font-bold">
-                    {BULAN_NAMES[b.bulan] ?? ""}
-                  </p>
-                  <div className="flex flex-wrap justify-end gap-1.5">
-                    {b.items.map((item) => (
-                      <span
-                        key={`${b.bulan}-${item.tipe}`}
-                        className={
-                          item.lunas
-                            ? "rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-bold text-primary"
-                            : "rounded-full border border-amber-500/40 bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400"
-                        }
-                      >
-                        {item.tipe === "Bapak"
-                          ? "Bapak"
-                          : item.tipe === "Ibu"
-                            ? "Ibu"
-                            : "Arisan"}{" "}
-                        {item.lunas ? "Lunas" : "Belum"}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
 
           <div className="rounded-[18px] border border-border/60 bg-card p-4">
             <div className="flex items-center gap-2">
