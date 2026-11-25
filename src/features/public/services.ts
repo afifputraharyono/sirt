@@ -72,6 +72,13 @@ export interface TagihanTahun {
   totalNominalKurang: number;
 }
 
+export interface KeanggotaanArisan {
+  mulaiTahun: number;
+  mulaiBulan: number;
+  /** Durasi kewajiban ronde = jumlah anggota ronde (bulan). */
+  jumlahAnggota: number;
+}
+
 export interface TagihanRumah {
   found: boolean;
   wajibBayar: boolean;
@@ -122,7 +129,6 @@ function indeksBulan(tahun: number, bulan: number): number {
 }
 
 // Kas Ibu untuk rumah yang baru ditempati bisa lebih lambat dari program.
-// Arisan mengikuti awal program sampai keanggotaan berperiode tersedia.
 function awalKewajiban(
   tipe: TipeTagihan,
   mulaiKasIbu: string | null
@@ -138,6 +144,47 @@ function awalKewajiban(
     : program;
 }
 
+interface Kewajiban {
+  tipe: TipeTagihan;
+  /** Indeks bulan absolut kewajiban pertama. */
+  awal: number;
+  wajib: (indeks: number) => boolean;
+}
+
+function kewajibanBulanan(
+  tipe: TipeTagihan,
+  mulaiKasIbu: string | null
+): Kewajiban | null {
+  const awal = awalKewajiban(tipe, mulaiKasIbu);
+  if (!awal) return null;
+  const awalIndeks = indeksBulan(awal.tahun, awal.bulan);
+  return { tipe, awal: awalIndeks, wajib: (indeks) => indeks >= awalIndeks };
+}
+
+// Kewajiban arisan mengikuti ronde: N bulan sejak ronde mulai, dengan
+// N = jumlah anggota ronde. Bulan dari semua ronde digabung (union), jadi
+// ronde berikutnya melanjutkan bulan setelah ronde sebelumnya selesai.
+function kewajibanArisan(keanggotaan: KeanggotaanArisan[]): Kewajiban | null {
+  const program = parseTahunBulan(MULAI_PROGRAM.Arisan ?? null);
+  if (!program) return null;
+  const programIndeks = indeksBulan(program.tahun, program.bulan);
+  const bulan = new Set<number>();
+  for (const k of keanggotaan) {
+    if (k.jumlahAnggota <= 0) continue;
+    const mulai = Math.max(
+      indeksBulan(k.mulaiTahun, k.mulaiBulan),
+      programIndeks
+    );
+    for (let i = 0; i < k.jumlahAnggota; i++) bulan.add(mulai + i);
+  }
+  if (bulan.size === 0) return null;
+  return {
+    tipe: "Arisan",
+    awal: Math.min(...bulan),
+    wajib: (indeks) => bulan.has(indeks),
+  };
+}
+
 export function hitungTagihan(params: {
   noRumah: string;
   statusHunian: StatusHunian | null;
@@ -149,7 +196,7 @@ export function hitungTagihan(params: {
     tahun: number;
     status_bayar?: boolean;
   }>;
-  pesertaArisan: boolean;
+  keanggotaanArisan: KeanggotaanArisan[];
   mulaiKasIbu: string | null;
 }): TagihanRumah {
   const kosong: TagihanRumah = {
@@ -176,22 +223,17 @@ export function hitungTagihan(params: {
   );
 
   // Jenis yang kewajibannya belum dimulai (null) tidak dihitung.
-  const tipeDasar: TipeTagihan[] = params.pesertaArisan
-    ? ["Bapak", "Ibu", "Arisan"]
-    : ["Bapak", "Ibu"];
-  const tipeAktif = tipeDasar
-    .map((tipe) => ({ tipe, awal: awalKewajiban(tipe, params.mulaiKasIbu) }))
-    .filter(
-      (x): x is { tipe: TipeTagihan; awal: TahunBulan } => x.awal !== null
-    );
-  if (tipeAktif.length === 0) return { ...kosong, wajibBayar: true };
+  const kewajibanList = [
+    kewajibanBulanan("Bapak", params.mulaiKasIbu),
+    kewajibanBulanan("Ibu", params.mulaiKasIbu),
+    kewajibanArisan(params.keanggotaanArisan),
+  ].filter((k): k is Kewajiban => k !== null);
+  if (kewajibanList.length === 0) return { ...kosong, wajibBayar: true };
 
   const tahunSekarang = params.tahun;
   const indeksSekarang = indeksBulan(tahunSekarang, params.bulanSekarang);
   const tahunAwal = Math.floor(
-    Math.min(
-      ...tipeAktif.map(({ awal }) => indeksBulan(awal.tahun, awal.bulan))
-    ) / 12
+    Math.min(...kewajibanList.map(({ awal }) => awal)) / 12
   );
 
   const tahunList: TagihanTahun[] = [];
@@ -201,19 +243,22 @@ export function hitungTagihan(params: {
     const akhirTahun = indeksBulan(tahun, bulanAkhir);
 
     const rincian: RincianTagihan[] = [];
-    for (const { tipe, awal } of tipeAktif) {
-      const awalIndeks = indeksBulan(awal.tahun, awal.bulan);
-      const dari = Math.max(awalIndeks, awalTahun);
+    for (const { tipe, awal, wajib } of kewajibanList) {
+      const dari = Math.max(awal, awalTahun);
       const sampai = Math.min(akhirTahun, indeksSekarang);
       if (dari > sampai) continue;
 
+      let bulanWajib = 0;
       let jumlahLunas = 0;
       for (let idx = dari; idx <= sampai; idx++) {
+        if (!wajib(idx)) continue;
+        bulanWajib++;
         const y = Math.floor(idx / 12);
         const m = (idx % 12) + 1;
         if (lunasSet.has(`${tipe}-${y}-${m}`)) jumlahLunas++;
       }
-      const bulanWajib = sampai - dari + 1;
+      if (bulanWajib === 0) continue;
+
       const jumlahKurang = bulanWajib - jumlahLunas;
       rincian.push({
         tipe,
@@ -227,11 +272,9 @@ export function hitungTagihan(params: {
 
     const detailPerBulan: DetailTagihanBulan[] = [];
     for (let b = 1; b <= bulanAkhir; b++) {
-      const items = tipeAktif
-        .filter(
-          ({ awal }) =>
-            indeksBulan(tahun, b) >= indeksBulan(awal.tahun, awal.bulan)
-        )
+      const indeks = indeksBulan(tahun, b);
+      const items = kewajibanList
+        .filter(({ wajib }) => wajib(indeks))
         .map(({ tipe }) => ({
           tipe,
           lunas: lunasSet.has(`${tipe}-${tahun}-${b}`),
@@ -278,7 +321,7 @@ export async function fetchTagihanRumah(noRumah: string): Promise<TagihanRumah> 
 
   const { data: rumahRows, error: rumahError } = await supabase
     .from("rumah_kk")
-    .select("id, no_rumah, status_hunian, is_active, ikut_arisan, mulai_kas_ibu")
+    .select("id, no_rumah, status_hunian, is_active, mulai_kas_ibu")
     .eq("no_rumah", noRumah.trim())
     .eq("is_active", true)
     .limit(1);
@@ -287,7 +330,7 @@ export async function fetchTagihanRumah(noRumah: string): Promise<TagihanRumah> 
     rumahRows as
       | Pick<
           RumahKK,
-          "id" | "no_rumah" | "status_hunian" | "ikut_arisan" | "mulai_kas_ibu"
+          "id" | "no_rumah" | "status_hunian" | "mulai_kas_ibu"
         >[]
       | null
   )?.[0];
@@ -317,7 +360,23 @@ export async function fetchTagihanRumah(noRumah: string): Promise<TagihanRumah> 
     .eq("status_bayar", true);
   if (kasError) throw kasError;
 
-  const pesertaArisan = rumah.ikut_arisan;
+  const { data: anggotaRows, error: anggotaError } = await supabase
+    .from("v_arisan_anggota_publik")
+    .select("tanggal_mulai, jumlah_anggota")
+    .eq("rumah_id", rumah.id);
+  if (anggotaError) throw anggotaError;
+
+  const keanggotaanArisan: KeanggotaanArisan[] = [];
+  for (const row of anggotaRows ?? []) {
+    const mulai = parseTahunBulan(String(row.tanggal_mulai).slice(0, 7));
+    const jumlahAnggota = Number(row.jumlah_anggota) || 0;
+    if (!mulai || jumlahAnggota <= 0) continue;
+    keanggotaanArisan.push({
+      mulaiTahun: mulai.tahun,
+      mulaiBulan: mulai.bulan,
+      jumlahAnggota,
+    });
+  }
 
   return hitungTagihan({
     noRumah: rumah.no_rumah,
@@ -330,7 +389,7 @@ export async function fetchTagihanRumah(noRumah: string): Promise<TagihanRumah> 
       tahun: number;
       status_bayar: boolean;
     }>,
-    pesertaArisan,
+    keanggotaanArisan,
     mulaiKasIbu: rumah.mulai_kas_ibu ?? null,
   });
 }
