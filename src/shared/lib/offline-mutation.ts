@@ -24,6 +24,8 @@ export function useOfflineMutation<K extends MutationKey, TData>(
   const { offlineKey, queryKeyToInvalidate, onSuccess, onError } = options;
 
   return useMutation<TData, Error, MutationInput<K>>({
+    // Tanpa "always", React Query menahan mutation saat offline sehingga mutationFn tak pernah jalan.
+    networkMode: "always",
     mutationFn: async (variables: MutationInput<K>) => {
       if (!isOnline) {
         addAction({
