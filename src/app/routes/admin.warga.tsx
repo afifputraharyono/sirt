@@ -1,17 +1,11 @@
 import { useState } from "react";
 import { PageHeader } from "@/shared/components/layout/PageHeader";
-import { BottomDrawer } from "@/shared/components/ui/BottomDrawer";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Plus, ChevronDown, ChevronRight, Pencil, Trash2, UserPlus, Search, Home,
-  Upload, Download, FileSpreadsheet, AlertTriangle, CheckCircle2, XCircle,
-} from "lucide-react";
+import { Home, Plus, Search, Upload } from "lucide-react";
 import { toast } from "sonner";
 import {
   useRumahList, useCreateRumah, useUpdateRumah, useDeleteRumah,
@@ -20,7 +14,7 @@ import {
 } from "@/features/warga/hooks";
 import {
   buildWargaImportPreview, CSV_TEMPLATE,
-  type ImportPreview, type ImportRow,
+  type ImportPreview,
 } from "@/features/warga/csv";
 import {
   saranUsername,
@@ -31,25 +25,12 @@ import type {
   WargaDetail, StatusHunian, JenisKelamin, HubunganKeluarga,
   Agama, StatusPerkawinan, ModeJimpitan,
 } from "@/shared/types/database";
-import { hitungUmur } from "@/shared/utils/format";
-
-const STATUS_HUNIAN: StatusHunian[] = ["Tetap", "Kontrak", "Kosong"];
-const MODE_JIMPITAN: ModeJimpitan[] = ["Harian", "Bulanan", "Bebas"];
-const JENIS_KELAMIN: JenisKelamin[] = ["L", "P"];
-const HUBUNGAN: HubunganKeluarga[] = [
-  "Kepala Keluarga", "Istri", "Anak", "Orang Tua",
-  "Mertua", "Menantu", "Cucu", "Famili Lain", "Lainnya",
-];
-const AGAMA: Agama[] = ["Islam", "Kristen", "Katolik", "Hindu", "Buddha", "Konghucu", "Lainnya"];
-const STATUS_KAWIN: StatusPerkawinan[] = ["Belum Kawin", "Kawin", "Cerai Hidup", "Cerai Mati"];
-const SELECT_CLASS = "flex h-10 w-full rounded-[11px] border border-input bg-background px-3 py-2 text-[13.5px]";
-const TODAY = new Date().toISOString().split("T")[0]!;
-
-const HUNIAN_BADGE: Record<string, string> = {
-  Tetap: "bg-primary/15 text-primary",
-  Kontrak: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
-  Kosong: "border border-border/60 text-muted-foreground",
-};
+import { RumahCard } from "@/features/warga/components/RumahCard";
+import { RumahFormDrawer } from "@/features/warga/components/RumahFormDrawer";
+import { WargaFormDrawer } from "@/features/warga/components/WargaFormDrawer";
+import { ImportWargaDrawer } from "@/features/warga/components/ImportWargaDrawer";
+import { AkunHasilDialog } from "@/features/warga/components/AkunHasilDialog";
+import { TODAY } from "@/features/warga/constants";
 
 export default function AdminWarga() {
   const { data: rumahList, isLoading } = useRumahList();
@@ -215,14 +196,6 @@ export default function AdminWarga() {
     setRumahDrawer(true);
   };
 
-  const jadiKosong =
-    !!editRumah &&
-    editRumah.status_hunian !== "Kosong" &&
-    formStatus === "Kosong";
-  const jadiDihuni =
-    formStatus !== "Kosong" &&
-    (!editRumah || editRumah.status_hunian === "Kosong");
-
   const handleRumahSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
@@ -333,22 +306,6 @@ export default function AdminWarga() {
     }
   };
 
-  const handleDownloadAkun = () => {
-    const berhasil = (akunHasil ?? []).filter((r) => r.ok);
-    if (berhasil.length === 0) return;
-    const lines = ["username,password"];
-    berhasil.forEach((r) => lines.push(`${r.username},${r.password ?? ""}`));
-    const blob = new Blob(["\uFEFF" + lines.join("\r\n")], {
-      type: "text/csv;charset=utf-8",
-    });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "akun-warga-baru.csv";
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-
   const handleDelete = () => {
     if (!deleteTarget) return;
     if (deleteTarget.type === "rumah") {
@@ -439,359 +396,56 @@ export default function AdminWarga() {
         </div>
       )}
 
-      {/* Drawer Rumah */}
-      <BottomDrawer open={rumahDrawer} onOpenChange={setRumahDrawer} title={editRumah ? "Edit Rumah" : "Tambah Rumah"}>
-        <form onSubmit={handleRumahSubmit} className="flex flex-col gap-3.5">
-          <FormField label="No. Rumah *">
-            <Input name="no_rumah" required defaultValue={editRumah?.no_rumah} className="rounded-[11px]" />
-          </FormField>
-          <FormField label="No. KK">
-            <Input name="no_kk" maxLength={16} defaultValue={editRumah?.no_kk ?? ""} className="rounded-[11px]" />
-          </FormField>
-          <FormField label="Alamat Lengkap">
-            <Input name="alamat_lengkap" defaultValue={editRumah?.alamat_lengkap ?? ""} className="rounded-[11px]" />
-          </FormField>
-          <FormField label="Status Hunian *">
-            <select
-              value={formStatus}
-              onChange={(e) => setFormStatus(e.target.value as StatusHunian)}
-              className={SELECT_CLASS}
-            >
-              {STATUS_HUNIAN.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
-            {jadiKosong && (
-              <p className="text-[11px] text-muted-foreground">
-                Bulan tanggal kosong tidak ditagih; tagihan berhenti di bulan
-                sebelumnya.
-              </p>
-            )}
-            {jadiDihuni && (
-              <p className="text-[11px] text-muted-foreground">
-                Bulan mulai hunian tetap ditagih penuh.
-              </p>
-            )}
-          </FormField>
-          {jadiKosong && (
-            <FormField label="Tanggal Kosong *">
-              <Input
-                type="date"
-                required
-                value={tanggalKosong}
-                onChange={(e) => setTanggalKosong(e.target.value)}
-                className="rounded-[11px]"
-              />
-            </FormField>
-          )}
-          {jadiDihuni && (
-            <FormField label="Tanggal Mulai Hunian *">
-              <Input
-                type="date"
-                required
-                value={tanggalMulaiHunian}
-                onChange={(e) => setTanggalMulaiHunian(e.target.value)}
-                className="rounded-[11px]"
-              />
-            </FormField>
-          )}
-          {jadiDihuni && editRumah && (
-            <label className="flex items-start gap-2.5 rounded-[11px] border border-border/60 px-3 py-2.5">
-              <input
-                type="checkbox"
-                checked={tunggakanDialihkan}
-                onChange={(e) => setTunggakanDialihkan(e.target.checked)}
-                className="mt-0.5 h-4 w-4 shrink-0 rounded border-border accent-primary"
-              />
-              <div>
-                <div className="text-[12.5px] font-bold">Tunggakan lama dialihkan</div>
-                <div className="text-[11px] leading-relaxed text-muted-foreground">
-                  Jika dicentang, tunggakan dari masa hunian sebelumnya tetap
-                  ditagihkan ke rumah ini. Jika tidak, tagihan dimulai dari bulan
-                  mulai hunian.
-                </div>
-              </div>
-            </label>
-          )}
-          <FormField label="Mode Jimpitan *">
-            <select name="mode_jimpitan" defaultValue={editRumah?.mode_jimpitan ?? "Harian"} className={SELECT_CLASS}>
-              {MODE_JIMPITAN.map((m) => <option key={m} value={m}>{m}</option>)}
-            </select>
-          </FormField>
-          <FormField label="Status Arisan">
-            <div className="rounded-[11px] border border-border/60 px-3 py-2.5">
-              <div className="text-[12.5px] font-bold">
-                {editRumah?.ikut_arisan ? "Peserta arisan ronde berjalan" : "Bukan peserta arisan"}
-              </div>
-              <div className="text-[11px] text-muted-foreground">
-                Keanggotaan arisan diatur lewat Keuangan → Putaran (Mulai ronde).
-              </div>
-            </div>
-          </FormField>
-          <FormField label="Mulai Kas Ibu">
-            <Input
-              name="mulai_kas_ibu"
-              type="date"
-              defaultValue={editRumah?.mulai_kas_ibu ?? ""}
-              className="rounded-[11px]"
-            />
-            <p className="text-[11px] text-muted-foreground">
-              {jadiDihuni
-                ? "Kosongkan untuk otomatis memakai awal bulan tanggal mulai hunian."
-                : "Kosongkan bila rumah sudah ditempati sebelum kas berjalan (wajib sejak Agustus)."}
-            </p>
-          </FormField>
-          <FormField label="Catatan">
-            <Input name="catatan" defaultValue={editRumah?.catatan ?? ""} className="rounded-[11px]" />
-          </FormField>
-          <PrimaryButton
-            pending={
-              createRumah.isPending ||
-              updateRumah.isPending ||
-              kosongkanRumah.isPending ||
-              huniRumah.isPending
-            }
-          />
-        </form>
-      </BottomDrawer>
+      <RumahFormDrawer
+        open={rumahDrawer}
+        onOpenChange={setRumahDrawer}
+        editRumah={editRumah}
+        formStatus={formStatus}
+        onFormStatusChange={setFormStatus}
+        tanggalKosong={tanggalKosong}
+        onTanggalKosongChange={setTanggalKosong}
+        tanggalMulaiHunian={tanggalMulaiHunian}
+        onTanggalMulaiHunianChange={setTanggalMulaiHunian}
+        tunggakanDialihkan={tunggakanDialihkan}
+        onTunggakanDialihkanChange={setTunggakanDialihkan}
+        onSubmit={handleRumahSubmit}
+        pending={
+          createRumah.isPending ||
+          updateRumah.isPending ||
+          kosongkanRumah.isPending ||
+          huniRumah.isPending
+        }
+      />
 
-      {/* Drawer Warga */}
-      <BottomDrawer open={wargaDrawer} onOpenChange={setWargaDrawer} title={editWarga ? "Edit Warga" : "Tambah Warga"}>
-        <form onSubmit={handleWargaSubmit} className="flex flex-col gap-3.5">
-          <FormField label="Nama Lengkap *">
-            <Input name="nama_lengkap" required defaultValue={editWarga?.nama_lengkap} className="rounded-[11px]" />
-          </FormField>
-          <div className="grid grid-cols-2 gap-3">
-            <FormField label="NIK">
-              <Input name="nik" maxLength={16} defaultValue={editWarga?.nik ?? ""} className="rounded-[11px]" />
-            </FormField>
-            <FormField label="Jenis Kelamin *">
-              <select name="jenis_kelamin" defaultValue={editWarga?.jenis_kelamin ?? "L"} className={SELECT_CLASS}>
-                {JENIS_KELAMIN.map((j) => <option key={j} value={j}>{j === "L" ? "Laki-laki" : "Perempuan"}</option>)}
-              </select>
-            </FormField>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <FormField label="Tempat Lahir">
-              <Input name="tempat_lahir" defaultValue={editWarga?.tempat_lahir ?? ""} className="rounded-[11px]" />
-            </FormField>
-            <FormField label="Tanggal Lahir *">
-              <Input name="tanggal_lahir" type="date" required defaultValue={editWarga?.tanggal_lahir} className="rounded-[11px]" />
-            </FormField>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <FormField label="Agama *">
-              <select name="agama" defaultValue={editWarga?.agama ?? "Islam"} className={SELECT_CLASS}>
-                {AGAMA.map((a) => <option key={a} value={a}>{a}</option>)}
-              </select>
-            </FormField>
-            <FormField label="Status Perkawinan *">
-              <select name="status_perkawinan" defaultValue={editWarga?.status_perkawinan ?? "Belum Kawin"} className={SELECT_CLASS}>
-                {STATUS_KAWIN.map((s) => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </FormField>
-          </div>
-          <FormField label="Hubungan Keluarga *">
-            <select name="hubungan_keluarga" defaultValue={editWarga?.hubungan_keluarga ?? "Anak"} className={SELECT_CLASS}>
-              {HUBUNGAN.map((h) => <option key={h} value={h}>{h}</option>)}
-            </select>
-          </FormField>
-          <div className="grid grid-cols-2 gap-3">
-            <FormField label="Pendidikan">
-              <Input name="pendidikan_terakhir" defaultValue={editWarga?.pendidikan_terakhir ?? ""} className="rounded-[11px]" />
-            </FormField>
-            <FormField label="Pekerjaan">
-              <Input name="pekerjaan" defaultValue={editWarga?.pekerjaan ?? ""} className="rounded-[11px]" />
-            </FormField>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <FormField label="No. HP">
-              <Input name="no_hp" defaultValue={editWarga?.no_hp ?? ""} className="rounded-[11px]" />
-            </FormField>
-            <FormField label="Gol. Darah">
-              <Input name="golongan_darah" maxLength={3} defaultValue={editWarga?.golongan_darah ?? ""} className="rounded-[11px]" />
-            </FormField>
-          </div>
+      <WargaFormDrawer
+        open={wargaDrawer}
+        onOpenChange={setWargaDrawer}
+        editWarga={editWarga}
+        wargaRumah={wargaRumah}
+        buatAkunManual={buatAkunManual}
+        onBuatAkunManualChange={setBuatAkunManual}
+        onSubmit={handleWargaSubmit}
+        pending={createWarga.isPending || updateWarga.isPending}
+      />
 
-          {!editWarga && (
-            <label className="flex items-start gap-2.5 rounded-[11px] border border-border/60 px-3 py-2.5">
-              <input
-                type="checkbox"
-                checked={buatAkunManual}
-                onChange={(e) => setBuatAkunManual(e.target.checked)}
-                className="mt-0.5 h-4 w-4 shrink-0 rounded border-border accent-primary"
-              />
-              <div>
-                <div className="text-[12.5px] font-bold">Buatkan akun login</div>
-                <div className="text-[11px] leading-relaxed text-muted-foreground">
-                  Username: nomor rumah + nama depan (mis. a1-budi). Password awal:
-                  sirt-rt-{wargaRumah?.no_rumah.toLowerCase() ?? "<no rumah>"}, wajib
-                  diganti saat login pertama.
-                </div>
-              </div>
-            </label>
-          )}
-
-          <PrimaryButton pending={createWarga.isPending || updateWarga.isPending} />
-        </form>
-      </BottomDrawer>
-
-      {/* Drawer Impor CSV */}
-      <BottomDrawer
+      <ImportWargaDrawer
         open={importOpen}
         onOpenChange={(open) => {
           setImportOpen(open);
           if (!open) resetImport();
         }}
-        title="Impor Data Warga"
-      >
-        <div className="flex flex-col gap-3.5">
-          <div className="rounded-[14px] border border-border/60 bg-muted/30 p-3.5">
-            <div className="text-[12.5px] font-bold">1. Siapkan file CSV</div>
-            <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
-              Satu baris = satu anggota keluarga. Nomor rumah harus sudah terdaftar;
-              impor hanya menambah anggota baru, bukan membuat rumah baru.
-            </p>
-            <button
-              type="button"
-              onClick={handleDownloadTemplate}
-              className="mt-2.5 flex items-center gap-1.5 rounded-[10px] bg-card px-2.5 py-2 text-[12px] font-bold shadow-sm transition-transform active:scale-[0.96]"
-            >
-              <Download className="h-3.5 w-3.5" strokeWidth={2.4} />
-              Unduh template
-            </button>
-          </div>
+        preview={importPreview}
+        fileName={importFileName}
+        readingFile={readingFile}
+        akunLines={akunLines}
+        onFileChange={handleImportFile}
+        onToggleAkun={toggleAkunLine}
+        onDownloadTemplate={handleDownloadTemplate}
+        onSubmit={handleImportSubmit}
+        submitting={importWarga.isPending || buatAkun.isPending}
+      />
 
-          <label className="flex cursor-pointer flex-col items-center gap-1.5 rounded-[14px] border border-dashed border-border/70 px-3 py-6 text-center">
-            <FileSpreadsheet className="h-7 w-7 text-muted-foreground/60" strokeWidth={1.8} />
-            <span className="text-[12.5px] font-bold">
-              {readingFile ? "Membaca file..." : importFileName || "Pilih file .csv"}
-            </span>
-            <span className="text-[11px] text-muted-foreground">
-              Maksimal 2 MB · pemisah koma atau titik koma
-            </span>
-            <input
-              type="file"
-              accept=".csv,text/csv"
-              className="hidden"
-              onChange={(e) => handleImportFile(e.target.files?.[0] ?? null)}
-            />
-          </label>
-
-          {importPreview?.fatal && (
-            <div className="rounded-[12px] bg-destructive/10 px-3 py-2.5 text-[12px] font-medium leading-relaxed text-destructive">
-              {importPreview.fatal}
-            </div>
-          )}
-
-          {importPreview && !importPreview.fatal && (
-            <>
-              <div className="flex flex-wrap gap-1.5">
-                <SummaryChip tone="ok">{importPreview.okCount} siap diimpor</SummaryChip>
-                <SummaryChip tone="skip">{importPreview.skipCount} dilewati</SummaryChip>
-                <SummaryChip tone="error">{importPreview.errorCount} error</SummaryChip>
-              </div>
-
-              {akunLines.size > 0 && (
-                <p className="text-[11px] leading-relaxed text-muted-foreground">
-                  {akunLines.size} anggota akan dibuatkan akun login. Password awal{" "}
-                  <span className="font-mono">sirt-rt-&lt;no rumah&gt;</span> dan wajib
-                  diganti saat login pertama.
-                </p>
-              )}
-
-              {importPreview.rows.length === 0 ? (
-                <p className="rounded-[12px] border border-dashed border-border/60 px-3 py-4 text-center text-[12px] text-muted-foreground">
-                  Tidak ada baris data di file.
-                </p>
-              ) : (
-                <div className="flex max-h-72 flex-col gap-1.5 overflow-y-auto pr-0.5">
-                  {importPreview.rows.slice(0, 200).map((row) => (
-                    <ImportRowItem
-                      key={row.line}
-                      row={row}
-                      akunDipilih={akunLines.has(row.line)}
-                      onToggleAkun={() => toggleAkunLine(row.line)}
-                    />
-                  ))}
-                </div>
-              )}
-
-              {importPreview.rows.length > 200 && (
-                <p className="text-[11px] text-muted-foreground">
-                  Menampilkan 200 baris pertama dari {importPreview.total} baris.
-                </p>
-              )}
-
-              <button
-                type="button"
-                onClick={handleImportSubmit}
-                disabled={
-                  importPreview.okCount === 0 ||
-                  importWarga.isPending ||
-                  buatAkun.isPending
-                }
-                className="mt-1 w-full rounded-xl bg-primary py-3 text-[14px] font-bold text-primary-foreground transition-transform active:scale-[0.98] disabled:opacity-60"
-              >
-                {importWarga.isPending || buatAkun.isPending
-                  ? "Memproses..."
-                  : importPreview.okCount === 0
-                    ? "Tidak ada baris yang bisa diimpor"
-                    : `Impor ${importPreview.okCount} anggota`}
-              </button>
-            </>
-          )}
-        </div>
-      </BottomDrawer>
-
-      {/* Dialog hasil pembuatan akun */}
-      <AlertDialog
-        open={!!akunHasil}
-        onOpenChange={(open) => !open && setAkunHasil(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Akun Login Dibuat</AlertDialogTitle>
-            <AlertDialogDescription>
-              {(akunHasil ?? []).filter((r) => r.ok).length} akun berhasil,{" "}
-              {(akunHasil ?? []).filter((r) => !r.ok).length} gagal. Sampaikan
-              password awal ke warga; password wajib diganti saat login pertama.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-
-          <div className="flex max-h-56 flex-col gap-1.5 overflow-y-auto">
-            {(akunHasil ?? []).map((r) => (
-              <div
-                key={`${r.warga_id}-${r.username}`}
-                className="flex items-center justify-between gap-2 rounded-[10px] bg-muted/40 px-2.5 py-2 text-[12px]"
-              >
-                <span className="font-mono font-bold">{r.username}</span>
-                {r.ok ? (
-                  <span className="font-mono text-emerald-600 dark:text-emerald-400">
-                    {r.password}
-                  </span>
-                ) : (
-                  <span className="text-right text-[11px] text-destructive">
-                    {r.error}
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-
-          <AlertDialogFooter>
-            {(akunHasil ?? []).some((r) => r.ok) && (
-              <button
-                type="button"
-                onClick={handleDownloadAkun}
-                className="flex items-center justify-center gap-1.5 rounded-[10px] border border-border/60 px-3 py-2 text-[12.5px] font-bold transition-transform active:scale-[0.96]"
-              >
-                <Download className="h-3.5 w-3.5" strokeWidth={2.4} />
-                Unduh CSV
-              </button>
-            )}
-            <AlertDialogAction>Tutup</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <AkunHasilDialog hasil={akunHasil} onClose={() => setAkunHasil(null)} />
 
       {/* Confirm Delete */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
@@ -812,192 +466,6 @@ export default function AdminWarga() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
-  );
-}
-
-function SummaryChip({ tone, children }: { tone: ImportRow["status"]; children: React.ReactNode }) {
-  const cls =
-    tone === "ok"
-      ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-      : tone === "skip"
-        ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
-        : "bg-destructive/10 text-destructive";
-  return (
-    <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${cls}`}>{children}</span>
-  );
-}
-
-function ImportRowItem({
-  row,
-  akunDipilih,
-  onToggleAkun,
-}: {
-  row: ImportRow;
-  akunDipilih: boolean;
-  onToggleAkun: () => void;
-}) {
-  const Icon = row.status === "ok" ? CheckCircle2 : row.status === "skip" ? AlertTriangle : XCircle;
-  const tone =
-    row.status === "ok"
-      ? "text-emerald-600 dark:text-emerald-400"
-      : row.status === "skip"
-        ? "text-amber-600 dark:text-amber-400"
-        : "text-destructive";
-  return (
-    <div className="flex items-start gap-2 rounded-[10px] bg-muted/40 px-2.5 py-2">
-      <Icon className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${tone}`} strokeWidth={2.2} />
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-baseline gap-x-1.5">
-          <span className="max-w-full truncate text-[12px] font-bold">{row.nama || "(tanpa nama)"}</span>
-          <span className="text-[10.5px] font-medium text-muted-foreground">
-            Rumah {row.noRumah || "-"} · baris {row.line}
-          </span>
-        </div>
-        {row.messages.length > 0 && (
-          <div className={`mt-0.5 text-[11px] leading-snug ${tone}`}>{row.messages.join(" ")}</div>
-        )}
-        {row.status === "ok" && (
-          <label className="mt-1 flex items-center gap-1.5 text-[11px] font-medium">
-            <input
-              type="checkbox"
-              checked={akunDipilih}
-              onChange={onToggleAkun}
-              className="h-3.5 w-3.5 rounded border-border accent-primary"
-            />
-            Buat akun
-            <span className="font-mono text-[10.5px] text-muted-foreground">
-              {saranUsername(row.noRumah, row.nama)}
-            </span>
-          </label>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function FormField({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <Label className="text-[12.5px] font-bold">{label}</Label>
-      {children}
-    </div>
-  );
-}
-
-function PrimaryButton({ pending }: { pending: boolean }) {
-  return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="mt-1 w-full rounded-xl bg-primary py-3 text-[14px] font-bold text-primary-foreground transition-transform active:scale-[0.98] disabled:opacity-60"
-    >
-      {pending ? "Menyimpan..." : "Simpan"}
-    </button>
-  );
-}
-
-function IconBtn({ icon: Icon, danger, onClick }: { icon: typeof Pencil; danger?: boolean; onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`flex h-7 w-7 items-center justify-center rounded-lg transition-transform active:scale-90 ${
-        danger ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground"
-      }`}
-    >
-      <Icon className="h-3.5 w-3.5" strokeWidth={2.2} />
-    </button>
-  );
-}
-
-function RumahCard({
-  rumah, kk, isOpen, activeWarga,
-  onToggle, onEditRumah, onDeleteRumah, onAddWarga, onEditWarga, onDeleteWarga,
-}: {
-  rumah: RumahWithWarga;
-  kk: WargaDetail | undefined;
-  isOpen: boolean;
-  activeWarga: WargaDetail[];
-  onToggle: () => void;
-  onEditRumah: () => void;
-  onDeleteRumah: () => void;
-  onAddWarga: () => void;
-  onEditWarga: (w: WargaDetail) => void;
-  onDeleteWarga: (id: string) => void;
-}) {
-  return (
-    <div className="animate-in fade-in rounded-[14px] border border-border/60 bg-card transition-all">
-      {/* Header row */}
-      <button
-        onClick={onToggle}
-        className="flex w-full items-center gap-2.5 px-3.5 py-3 text-left transition-colors active:bg-muted/50"
-      >
-        {isOpen
-          ? <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={2.5} />
-          : <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={2.5} />
-        }
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <span className="text-[14px] font-bold">Rumah {rumah.no_rumah}</span>
-            <span className={`rounded-full px-2 py-0.5 text-[10.5px] font-bold ${HUNIAN_BADGE[rumah.status_hunian] ?? ""}`}>
-              {rumah.status_hunian}
-            </span>
-            {rumah.ikut_arisan && (
-              <span className="rounded-full bg-violet-500/15 px-2 py-0.5 text-[10.5px] font-bold text-violet-600 dark:text-violet-400">
-                Arisan
-              </span>
-            )}
-          </div>
-          <div className="mt-0.5 text-[12px] text-muted-foreground">
-            {kk?.nama_lengkap ?? "Belum ada KK"} · {activeWarga.length} anggota
-          </div>
-        </div>
-        <div className="flex shrink-0 gap-1" onClick={(e) => e.stopPropagation()}>
-          <IconBtn icon={Pencil} onClick={onEditRumah} />
-          <IconBtn icon={Trash2} danger onClick={onDeleteRumah} />
-        </div>
-      </button>
-
-      {/* Expanded warga list */}
-      {isOpen && (
-        <div className="border-t border-border/60 px-3.5 py-2.5">
-          {activeWarga.length === 0 ? (
-            <p className="py-2 text-center text-[12.5px] text-muted-foreground">
-              Belum ada anggota
-            </p>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {activeWarga.map((w) => (
-                <div
-                  key={w.id}
-                  className="flex items-center gap-2.5 rounded-[10px] bg-muted/40 px-3 py-2"
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="text-[13px] font-bold">{w.nama_lengkap}</div>
-                    <div className="mt-0.5 flex flex-wrap gap-x-2 text-[11px] text-muted-foreground">
-                      <span>{w.hubungan_keluarga}</span>
-                      <span>·</span>
-                      <span>{w.jenis_kelamin === "L" ? "L" : "P"}, {hitungUmur(w.tanggal_lahir)} thn</span>
-                      {w.pekerjaan && <><span>·</span><span>{w.pekerjaan}</span></>}
-                    </div>
-                  </div>
-                  <div className="flex shrink-0 gap-1">
-                    <IconBtn icon={Pencil} onClick={() => onEditWarga(w)} />
-                    <IconBtn icon={Trash2} danger onClick={() => onDeleteWarga(w.id)} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-          <button
-            onClick={onAddWarga}
-            className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-[10px] border border-dashed border-border/60 py-2 text-[12.5px] font-bold text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <UserPlus className="h-3.5 w-3.5" strokeWidth={2.2} />
-            Tambah Anggota
-          </button>
-        </div>
-      )}
     </div>
   );
 }
