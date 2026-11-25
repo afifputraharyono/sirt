@@ -1,16 +1,6 @@
 import { useMemo, useState } from "react";
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BottomDrawer } from "@/shared/components/ui/BottomDrawer";
-import {
-  CheckCircle2, Circle, Clock, Lock, Pencil, Plus, RotateCw, Trash2,
-  type LucideIcon,
-} from "lucide-react";
+import { Plus, RotateCw } from "lucide-react";
 import {
   useArisanAnggota, useArisanRekap, useArisanRondeList,
   useDeleteArisanPutaran, useMulaiArisanRonde, useSalurkanArisanPutaran,
@@ -19,73 +9,23 @@ import {
 import { useRumahList } from "@/features/warga/hooks";
 import type { SimpanArisanPutaranInput } from "@/features/keuangan/services";
 import type { ArisanRekap } from "@/shared/types/database";
-import { formatRupiah, formatTanggalPendek } from "@/shared/utils/format";
+import {
+  buatPeriode, indeksPeriode, kunciPeriode, parsePeriodeKey, statusOf,
+} from "@/features/keuangan/arisan";
+import { RondePicker } from "@/features/keuangan/components/arisan/RondePicker";
+import { RondeProgressCard } from "@/features/keuangan/components/arisan/RondeProgressCard";
+import { RondeStats } from "@/features/keuangan/components/arisan/RondeStats";
+import { LintasTahunBanner } from "@/features/keuangan/components/arisan/LintasTahunBanner";
+import { PotBulanIniBanner } from "@/features/keuangan/components/arisan/PotBulanIniBanner";
+import { PutaranRow } from "@/features/keuangan/components/arisan/PutaranRow";
+import { PutaranDrawer } from "@/features/keuangan/components/arisan/PutaranDrawer";
+import { MulaiRondeDrawer } from "@/features/keuangan/components/arisan/MulaiRondeDrawer";
+import { TutupRondeDialog } from "@/features/keuangan/components/arisan/TutupRondeDialog";
+import { TalanganDialog } from "@/features/keuangan/components/arisan/TalanganDialog";
+import { SalurkanDialog } from "@/features/keuangan/components/arisan/SalurkanDialog";
+import { HapusPutaranDialog } from "@/features/keuangan/components/arisan/HapusPutaranDialog";
 
-const BULAN_NAMES = ["", "Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-const SELECT_CLASS = "flex h-10 w-full rounded-[11px] border border-input bg-background px-3 py-2 text-[13.5px]";
 const TODAY = new Date().toISOString().split("T")[0] ?? "";
-
-type StatusKind = "belum-diundi" | "belum-disalurkan" | "sudah-disalurkan";
-
-function statusOf(row: ArisanRekap): StatusKind {
-  if (!row.putaran_id) return "belum-diundi";
-  if (!row.pengeluaran_id) return "belum-disalurkan";
-  return "sudah-disalurkan";
-}
-
-const STATUS_BADGE: Record<StatusKind, { label: string; className: string; Icon: LucideIcon }> = {
-  "belum-diundi": { label: "Belum diundi", className: "bg-muted text-muted-foreground", Icon: Circle },
-  "belum-disalurkan": { label: "Belum disalurkan", className: "bg-amber-500/15 text-amber-600 dark:text-amber-400", Icon: Clock },
-  "sudah-disalurkan": { label: "Sudah disalurkan", className: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400", Icon: CheckCircle2 },
-};
-
-interface PeriodeRonde {
-  urutan: number;
-  tahun: number;
-  bulan: number;
-  key: string;
-  rekap: ArisanRekap | null;
-}
-
-function kunciPeriode(tahun: number, bulan: number) {
-  return `${tahun}-${String(bulan).padStart(2, "0")}`;
-}
-
-function labelPeriode(tahun: number, bulan: number) {
-  return `${BULAN_NAMES[bulan] ?? ""} ${tahun}`;
-}
-
-function indeksPeriode(tahun: number, bulan: number) {
-  return tahun * 12 + (bulan - 1);
-}
-
-function parsePeriodeKey(key: string) {
-  const [tahun = 0, bulan = 1] = key.split("-").map(Number);
-  return { tahun, bulan };
-}
-
-function buatPeriode(
-  tanggalMulai: string,
-  jumlahAnggota: number,
-  rekapByPeriode: Map<string, ArisanRekap>,
-): PeriodeRonde[] {
-  if (jumlahAnggota <= 0) return [];
-  const { tahun, bulan } = parsePeriodeKey(tanggalMulai.slice(0, 7));
-  const awal = indeksPeriode(tahun, bulan);
-  return Array.from({ length: jumlahAnggota }, (_, i) => {
-    const indeks = awal + i;
-    const tahunPeriode = Math.floor(indeks / 12);
-    const bulanPeriode = (indeks % 12) + 1;
-    const key = kunciPeriode(tahunPeriode, bulanPeriode);
-    return {
-      urutan: i + 1,
-      tahun: tahunPeriode,
-      bulan: bulanPeriode,
-      key,
-      rekap: rekapByPeriode.get(key) ?? null,
-    };
-  });
-}
 
 export function ArisanPutaranTab({ bulan, tahun }: { bulan: number; tahun: number }) {
   const { data: rekap, isLoading: rekapLoading, isError, refetch } = useArisanRekap();
@@ -433,9 +373,6 @@ export function ArisanPutaranTab({ bulan, tahun }: { bulan: number; tahun: numbe
     );
   };
 
-  const pemenangNama = (row: ArisanRekap) =>
-    row.pemenang_no_rumah ? `Rumah ${row.pemenang_no_rumah}` : "Belum diundi";
-
   const loadingAwal = (rondeLoading || rekapLoading) && rounds.length === 0;
 
   return (
@@ -487,158 +424,52 @@ export function ArisanPutaranTab({ bulan, tahun }: { bulan: number; tahun: numbe
               </button>
             )}
           </div>
-          <div className="-mx-4 mb-3 overflow-x-auto px-4 scrollbar-none [&::-webkit-scrollbar]:hidden">
-            <div className="flex gap-1.5">
-              {rounds.map((ronde) => {
-                const dipilih = selected?.id === ronde.id;
-                const jumlah = ronde.arisan_anggota.length;
-                const menang = menangPerRonde.get(ronde.id) ?? 0;
-                return (
-                  <button
-                    key={ronde.id}
-                    onClick={() => setPickedId(ronde.id)}
-                    className={`shrink-0 rounded-[11px] border px-3 py-2 text-left transition-colors ${
-                      dipilih
-                        ? "border-primary bg-primary/10"
-                        : "border-border/60 bg-card"
-                    }`}
-                  >
-                    <div className="text-[12px] font-bold">Ronde {ronde.nomor}</div>
-                    <div className="text-[10.5px] text-muted-foreground">
-                      {ronde.tanggal_selesai ? "ditutup" : "berjalan"} · {menang}/{jumlah}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          <RondePicker
+            rounds={rounds}
+            selectedId={selected?.id}
+            menangPerRonde={menangPerRonde}
+            onPick={setPickedId}
+          />
 
           {selected && (
             <>
-              {/* Progress ronde */}
-              <div className="rounded-[14px] border border-border/60 p-3.5">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <div className="text-[13px] font-bold">
-                      Ronde {selected.nomor}
-                      {!selected.tanggal_selesai && (
-                        <span className="ml-1.5 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
-                          berjalan
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-[11px] text-muted-foreground">
-                      Mulai {formatTanggalPendek(selected.tanggal_mulai)}
-                      {selected.tanggal_selesai
-                        ? ` · ditutup ${formatTanggalPendek(selected.tanggal_selesai)}`
-                        : ""}
-                    </div>
-                  </div>
-                  {!selected.tanggal_selesai && (
-                    <button
-                      onClick={() => {
-                        setTutupTanggal(TODAY);
-                        setTutupOpen(true);
-                      }}
-                      disabled={!bisaDitutup}
-                      className="flex shrink-0 items-center gap-1.5 rounded-xl border border-border/60 px-2.5 py-2 text-[11.5px] font-bold transition-transform active:scale-[0.96] disabled:opacity-40"
-                    >
-                      <Lock className="h-3.5 w-3.5" strokeWidth={2.4} /> Tutup ronde
-                    </button>
-                  )}
-                </div>
-                <div className="mt-2.5 flex items-center justify-between text-[11.5px]">
-                  <span className="text-muted-foreground">Anggota sudah menang</span>
-                  <span className="font-bold">
-                    {menangCount}/{jumlahAnggota}
-                  </span>
-                </div>
-                <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
-                  <div
-                    className="h-full rounded-full bg-emerald-500"
-                    style={{ width: `${progress}%` }}
-                  />
-                </div>
-                <div className="mt-1.5 text-[11px] text-muted-foreground">
-                  {selected.tanggal_selesai
-                    ? "Ronde selesai; riwayat putaran tidak bisa diubah."
-                    : (alasanTutup ??
-                      "Semua anggota sudah menang dan pot tersalurkan. Ronde siap ditutup.")}
-                </div>
-              </div>
+              <RondeProgressCard
+                ronde={selected}
+                menangCount={menangCount}
+                jumlahAnggota={jumlahAnggota}
+                progress={progress}
+                bisaDitutup={bisaDitutup}
+                alasanTutup={alasanTutup}
+                onTutup={() => {
+                  setTutupTanggal(TODAY);
+                  setTutupOpen(true);
+                }}
+              />
 
-              {/* Statistik ronde */}
-              <div className="-mx-4 mt-3 overflow-x-auto px-4 scrollbar-none [&::-webkit-scrollbar]:hidden">
-                <div className="flex gap-2.5">
-                  <div className="w-35 shrink-0 rounded-[14px] border border-border/60 bg-card p-3">
-                    <div className="text-[11.5px] font-semibold text-muted-foreground">Pot terkumpul</div>
-                    <div className="mt-0.5 font-mono text-[15px] font-extrabold">
-                      {formatRupiah(totalTerkumpul)}
-                    </div>
-                  </div>
-                  <div className="w-35 shrink-0 rounded-[14px] border border-border/60 bg-card p-3">
-                    <div className="text-[11.5px] font-semibold text-muted-foreground">Sudah disalurkan</div>
-                    <div className="mt-0.5 font-mono text-[15px] font-extrabold text-emerald-600 dark:text-emerald-400">
-                      {formatRupiah(totalTersalur)}
-                    </div>
-                  </div>
-                  <div className="w-35 shrink-0 rounded-[14px] border border-border/60 bg-card p-3">
-                    <div className="text-[11.5px] font-semibold text-muted-foreground">Sisa pot</div>
-                    <div
-                      className={`mt-0.5 font-mono text-[15px] font-extrabold ${
-                        totalTerkumpul - totalTersalur > 0
-                          ? "text-amber-600 dark:text-amber-400"
-                          : "text-muted-foreground"
-                      }`}
-                    >
-                      {formatRupiah(totalTerkumpul - totalTersalur)}
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <RondeStats
+                totalTerkumpul={totalTerkumpul}
+                totalTersalur={totalTersalur}
+              />
 
-              {/* Banner pot lintas tahun */}
-              {lintasTahun.length > 0 && (
-                <div className="mt-3 flex items-center justify-between gap-2 rounded-xl border border-amber-500/40 bg-amber-500/5 px-3 py-2.5">
-                  <div className="min-w-0">
-                    <div className="text-[12.5px] font-bold text-amber-700 dark:text-amber-300">
-                      {formatRupiah(totalLintasTahun)} pot tahun lalu belum disalurkan
-                    </div>
-                    <div className="text-[11px] text-muted-foreground">
-                      {lintasTahun.length} periode ·{" "}
-                      {[...new Set(lintasTahun.map((r) => r.tahun))].join(", ")}
-                    </div>
-                  </div>
-                  {rondeLintasTahun && (
-                    <button
-                      onClick={() => setPickedId(rondeLintasTahun)}
-                      className="shrink-0 rounded-[10px] bg-amber-500 px-2.5 py-1.5 text-[11px] font-bold text-amber-950 transition-transform active:scale-95"
-                    >
-                      Buka
-                    </button>
-                  )}
-                </div>
-              )}
+              <LintasTahunBanner
+                lintasTahun={lintasTahun}
+                total={totalLintasTahun}
+                onBuka={
+                  rondeLintasTahun
+                    ? () => setPickedId(rondeLintasTahun)
+                    : undefined
+                }
+              />
 
-              {/* Banner pot bulan ini */}
               {perluDiundi && (
-                <div className="mt-3 flex items-center justify-between gap-2 rounded-xl border border-amber-500/40 bg-amber-500/5 px-3 py-2.5">
-                  <div className="min-w-0">
-                    <div className="text-[12.5px] font-bold text-amber-700 dark:text-amber-300">
-                      Pot {BULAN_NAMES[bulan] ?? ""} {formatRupiah(potBulanIni)} belum diundi
-                    </div>
-                    <div className="text-[11px] text-muted-foreground">Tetapkan pemenang bulan ini.</div>
-                  </div>
-                  <button
-                    onClick={() => {
-                      if (activeRonde) setPickedId(activeRonde.id);
-                      openCreate(tahun, bulan);
-                    }}
-                    className="shrink-0 rounded-[10px] bg-amber-500 px-2.5 py-1.5 text-[11px] font-bold text-amber-950 transition-transform active:scale-95"
-                  >
-                    Catat
-                  </button>
-                </div>
+                <PotBulanIniBanner
+                  bulan={bulan}
+                  pot={potBulanIni}
+                  onCatat={() => {
+                    if (activeRonde) setPickedId(activeRonde.id);
+                    openCreate(tahun, bulan);
+                  }}
+                />
               )}
 
               <div className="mb-3 mt-4 flex items-center justify-between gap-2">
@@ -679,94 +510,22 @@ export function ArisanPutaranTab({ bulan, tahun }: { bulan: number; tahun: numbe
                   {baris.map((periode) => {
                     const row = periode.rekap;
                     if (!row) return null;
-                    const kind = statusOf(row);
-                    const badge = STATUS_BADGE[kind];
-                    const sisa = row.nominal_terkumpul - (row.nominal_putaran ?? 0);
-                    const bisaDiubah =
-                      !selected.tanggal_selesai && kind !== "sudah-disalurkan";
                     return (
-                      <div
+                      <PutaranRow
                         key={periode.key}
-                        className="rounded-xl border border-border/60 px-3 py-2.5"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-[13px] font-bold">
-                            {labelPeriode(periode.tahun, periode.bulan)}
-                          </span>
-                          <span
-                            className={`flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${badge.className}`}
-                          >
-                            <badge.Icon className="h-3 w-3" strokeWidth={2.5} />
-                            {badge.label}
-                          </span>
-                        </div>
-                        <div className="mt-1 text-[12px] text-muted-foreground">
-                          Pemenang:{" "}
-                          <span className="font-bold text-foreground">
-                            {pemenangNama(row)}
-                          </span>
-                          {row.tanggal_undi && (
-                            <> · undi {formatTanggalPendek(row.tanggal_undi)}</>
-                          )}
-                        </div>
-                        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono text-[11px]">
-                          <span className="text-emerald-600 dark:text-emerald-400">
-                            Terkumpul {formatRupiah(row.nominal_terkumpul)}
-                          </span>
-                          <span className="text-muted-foreground">·</span>
-                          <span className="text-muted-foreground">
-                            Tersalurkan {formatRupiah(row.nominal_putaran ?? 0)}
-                          </span>
-                          <span className="text-muted-foreground">·</span>
-                          <span
-                            className={
-                              sisa > 0
-                                ? "text-amber-600 dark:text-amber-400"
-                                : "text-muted-foreground"
-                            }
-                          >
-                            Sisa {formatRupiah(sisa)}
-                          </span>
-                        </div>
-                        {bisaDiubah && (
-                          <div className="mt-2 flex gap-1.5">
-                            {row.putaran_id ? (
-                              <button
-                                onClick={() => openEdit(row)}
-                                className="flex items-center gap-1 rounded-lg bg-muted px-2 py-1 text-[10.5px] font-bold text-muted-foreground transition-transform active:scale-95"
-                              >
-                                <Pencil className="h-3 w-3" /> Ubah
-                              </button>
-                            ) : (
-                              <button
-                                onClick={() => openCreate(row.tahun, row.bulan)}
-                                className="flex items-center gap-1 rounded-lg bg-primary/15 px-2 py-1 text-[10.5px] font-bold text-primary transition-transform active:scale-95"
-                              >
-                                <Plus className="h-3 w-3" /> Catat
-                              </button>
-                            )}
-                            {kind === "belum-disalurkan" && (
-                              <button
-                                onClick={() => {
-                                  setSalurTarget(row);
-                                  setSalurTanggal(TODAY);
-                                }}
-                                className="flex items-center gap-1 rounded-lg bg-emerald-500/15 px-2 py-1 text-[10.5px] font-bold text-emerald-600 transition-transform active:scale-95 dark:text-emerald-400"
-                              >
-                                <CheckCircle2 className="h-3 w-3" /> Salurkan
-                              </button>
-                            )}
-                            {row.putaran_id && (
-                              <button
-                                onClick={() => setDeleteTarget(row)}
-                                className="flex items-center gap-1 rounded-lg bg-destructive/10 px-2 py-1 text-[10.5px] font-bold text-destructive transition-transform active:scale-95"
-                              >
-                                <Trash2 className="h-3 w-3" /> Hapus
-                              </button>
-                            )}
-                          </div>
-                        )}
-                      </div>
+                        periode={periode}
+                        row={row}
+                        bisaDiubah={
+                          !selected.tanggal_selesai && statusOf(row) !== "sudah-disalurkan"
+                        }
+                        onEdit={() => openEdit(row)}
+                        onCatat={() => openCreate(row.tahun, row.bulan)}
+                        onSalurkan={() => {
+                          setSalurTarget(row);
+                          setSalurTanggal(TODAY);
+                        }}
+                        onHapus={() => setDeleteTarget(row)}
+                      />
                     );
                   })}
                 </div>
@@ -781,321 +540,82 @@ export function ArisanPutaranTab({ bulan, tahun }: { bulan: number; tahun: numbe
         </>
       )}
 
-      {/* Sheet catat/ubah putaran */}
-      <BottomDrawer
+      <PutaranDrawer
         open={sheetOpen}
         onOpenChange={setSheetOpen}
-        title={editId ? "Ubah Putaran" : "Catat Putaran"}
-      >
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
-          <div className="flex flex-col gap-1.5">
-            <Label className="text-[12.5px] font-bold">Periode putaran *</Label>
-            <select
-              required
-              value={formPeriode}
-              onChange={(e) => setFormPeriode(e.target.value)}
-              disabled={!!editId}
-              className={SELECT_CLASS}
-            >
-              {opsiPeriode.length === 0 && (
-                <option value={formPeriode}>
-                  {labelPeriode(
-                    parsePeriodeKey(formPeriode).tahun,
-                    parsePeriodeKey(formPeriode).bulan,
-                  )}
-                </option>
-              )}
-              {opsiPeriode.map((p) => (
-                <option key={p.key} value={p.key}>
-                  Putaran ke-{p.urutan} · {labelPeriode(p.tahun, p.bulan)}
-                </option>
-              ))}
-            </select>
-            <p className="text-[11px] text-muted-foreground">
-              Periode mengikuti urutan ronde; satu putaran per bulan.
-            </p>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label className="text-[12.5px] font-bold">Pemenang *</Label>
-            <select
-              required
-              value={pemenangId}
-              onChange={(e) => setPemenangId(e.target.value)}
-              disabled={kandidat.length === 0}
-              className={SELECT_CLASS}
-            >
-              <option value="">Pilih rumah anggota ronde...</option>
-              {kandidat.map((a) => (
-                <option key={a.rumah_id} value={a.rumah_id}>
-                  Rumah {a.rumah_kk?.no_rumah ?? "?"}
-                </option>
-              ))}
-            </select>
-            {kandidat.length === 0 && (
-              <p className="text-[11px] text-muted-foreground">
-                Tidak ada anggota yang belum menang.
-              </p>
-            )}
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label className="text-[12.5px] font-bold">Nominal pot (Rp) *</Label>
-            <Input
-              type="number"
-              required
-              min={1}
-              value={nominal}
-              onChange={(e) => setNominal(e.target.value)}
-              className="rounded-[11px]"
-            />
-            <p className="text-[11px] text-muted-foreground">
-              Pot terkumpul {labelPeriode(
-                parsePeriodeKey(formPeriode).tahun,
-                parsePeriodeKey(formPeriode).bulan,
-              )}: {formatRupiah(formPot)}.
-            </p>
-            {selisihTalangan > 0 && (
-              <p className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">
-                Nominal melebihi pot {formatRupiah(selisihTalangan)}; akan dikonfirmasi
-                sebagai talangan dari saldo kas.
-              </p>
-            )}
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label className="text-[12.5px] font-bold">Tanggal undi</Label>
-            <Input
-              type="date"
-              value={tanggalUndi}
-              onChange={(e) => setTanggalUndi(e.target.value)}
-              className="rounded-[11px]"
-            />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label className="text-[12.5px] font-bold">Catatan</Label>
-            <Input
-              value={catatan}
-              onChange={(e) => setCatatan(e.target.value)}
-              className="rounded-[11px]"
-            />
-          </div>
-          <label className="flex items-center gap-2.5 rounded-[11px] border border-border/60 px-3 py-2.5">
-            <input
-              type="checkbox"
-              checked={salurkanSekarang}
-              onChange={(e) => setSalurkanSekarang(e.target.checked)}
-              className="h-4 w-4 rounded border-border accent-primary"
-            />
-            <div>
-              <div className="text-[12.5px] font-bold">Sekaligus catat penyaluran</div>
-              <div className="text-[11px] text-muted-foreground">Membuat pengeluaran dana Arisan</div>
-            </div>
-          </label>
-          {salurkanSekarang && (
-            <div className="flex flex-col gap-1.5">
-              <Label className="text-[12.5px] font-bold">Tanggal salur</Label>
-              <Input
-                type="date"
-                value={tanggalSalur}
-                onChange={(e) => setTanggalSalur(e.target.value)}
-                className="rounded-[11px]"
-              />
-            </div>
-          )}
-          <button
-            type="submit"
-            disabled={
-              simpan.isPending || !pemenangId || !(nilaiNominal > 0) || !formPeriode
-            }
-            className="mt-1 w-full rounded-xl bg-primary py-3 text-[14px] font-bold text-primary-foreground transition-transform active:scale-[0.98] disabled:opacity-60"
-          >
-            {simpan.isPending ? "Menyimpan..." : "Simpan putaran"}
-          </button>
-        </form>
-      </BottomDrawer>
+        editId={editId}
+        formPeriode={formPeriode}
+        onFormPeriodeChange={setFormPeriode}
+        opsiPeriode={opsiPeriode}
+        pemenangId={pemenangId}
+        onPemenangIdChange={setPemenangId}
+        kandidat={kandidat}
+        nominal={nominal}
+        onNominalChange={setNominal}
+        tanggalUndi={tanggalUndi}
+        onTanggalUndiChange={setTanggalUndi}
+        catatan={catatan}
+        onCatatanChange={setCatatan}
+        salurkanSekarang={salurkanSekarang}
+        onSalurkanSekarangChange={setSalurkanSekarang}
+        tanggalSalur={tanggalSalur}
+        onTanggalSalurChange={setTanggalSalur}
+        formPot={formPot}
+        selisihTalangan={selisihTalangan}
+        pending={simpan.isPending}
+        onSubmit={handleSubmit}
+      />
 
-      {/* Sheet mulai ronde */}
-      <BottomDrawer open={mulaiOpen} onOpenChange={setMulaiOpen} title="Mulai Ronde Baru">
-        <form onSubmit={handleMulai} className="flex flex-col gap-3.5">
-          <div className="flex flex-col gap-1.5">
-            <Label className="text-[12.5px] font-bold">Bulan mulai *</Label>
-            <Input
-              type="month"
-              required
-              value={mulaiBulan}
-              onChange={(e) => setMulaiBulan(e.target.value)}
-              className="rounded-[11px]"
-            />
-            <p className="text-[11px] text-muted-foreground">
-              Ronde dimulai tanggal 1 dan harus setelah ronde sebelumnya ditutup.
-            </p>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label className="text-[12.5px] font-bold">Catatan</Label>
-            <Input
-              value={mulaiCatatan}
-              onChange={(e) => setMulaiCatatan(e.target.value)}
-              className="rounded-[11px]"
-            />
-          </div>
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center justify-between">
-              <Label className="text-[12.5px] font-bold">
-                Anggota ronde * ({mulaiAnggota.size})
-              </Label>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={pilihSemuaAnggota}
-                  className="text-[11px] font-bold text-primary"
-                >
-                  Pilih semua
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMulaiAnggota(new Set())}
-                  className="text-[11px] font-bold text-muted-foreground"
-                >
-                  Kosongkan
-                </button>
-              </div>
-            </div>
-            <div className="max-h-64 overflow-y-auto rounded-[11px] border border-border/60">
-              {rumahOptions.map((r) => (
-                <label
-                  key={r.id}
-                  className="flex items-center gap-2.5 border-b border-border/40 px-3 py-2 last:border-b-0"
-                >
-                  <input
-                    type="checkbox"
-                    checked={mulaiAnggota.has(r.id)}
-                    onChange={() => toggleMulaiAnggota(r.id)}
-                    className="h-4 w-4 rounded border-border accent-primary"
-                  />
-                  <span className="text-[12.5px] font-medium">Rumah {r.no_rumah}</span>
-                </label>
-              ))}
-            </div>
-            <p className="text-[11px] text-muted-foreground">
-              Keanggotaan dibekukan setelah ronde dimulai. Rumah Kosong tidak bisa dipilih;
-              susunan ini juga menentukan peserta pembayaran arisan.
-            </p>
-          </div>
-          <button
-            type="submit"
-            disabled={mulai.isPending || !mulaiBulan || mulaiAnggota.size === 0}
-            className="mt-1 w-full rounded-xl bg-primary py-3 text-[14px] font-bold text-primary-foreground transition-transform active:scale-[0.98] disabled:opacity-60"
-          >
-            {mulai.isPending ? "Memulai..." : "Mulai ronde"}
-          </button>
-        </form>
-      </BottomDrawer>
+      <MulaiRondeDrawer
+        open={mulaiOpen}
+        onOpenChange={setMulaiOpen}
+        bulan={mulaiBulan}
+        onBulanChange={setMulaiBulan}
+        catatan={mulaiCatatan}
+        onCatatanChange={setMulaiCatatan}
+        anggota={mulaiAnggota}
+        onToggleAnggota={toggleMulaiAnggota}
+        onPilihSemua={pilihSemuaAnggota}
+        onKosongkan={() => setMulaiAnggota(new Set())}
+        rumahOptions={rumahOptions}
+        pending={mulai.isPending}
+        onSubmit={handleMulai}
+      />
 
-      {/* Dialog tutup ronde */}
-      <AlertDialog open={tutupOpen} onOpenChange={setTutupOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Tutup ronde {selected?.nomor}?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Ronde hanya bisa ditutup setelah semua anggota menang dan seluruh pot
-              disalurkan. Putaran pada ronde ini tidak bisa diubah lagi.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="flex flex-col gap-1.5 py-2">
-            <Label className="text-[12.5px] font-bold">Tanggal tutup</Label>
-            <Input
-              type="date"
-              value={tutupTanggal}
-              onChange={(e) => setTutupTanggal(e.target.value)}
-              className="rounded-[11px]"
-            />
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Batal</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleTutup}
-              disabled={tutup.isPending || !bisaDitutup}
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
-            >
-              Tutup ronde
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <TutupRondeDialog
+        open={tutupOpen}
+        onOpenChange={setTutupOpen}
+        nomor={selected?.nomor}
+        tanggal={tutupTanggal}
+        onTanggalChange={setTutupTanggal}
+        onConfirm={handleTutup}
+        pending={tutup.isPending}
+        bisaDitutup={bisaDitutup}
+      />
 
-      {/* Dialog konfirmasi talangan */}
-      <AlertDialog open={!!talangan} onOpenChange={(open) => !open && setTalangan(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Nominal melebihi pot?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Nominal {formatRupiah(talangan?.nominal ?? 0)} melebihi pot terkumpul{" "}
-              {formatRupiah(formPot)}. Selisih {formatRupiah(selisihTalangan)} akan
-              dibayar dari saldo kas sebagai talangan.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Batal</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleTalangan}
-              disabled={simpan.isPending}
-              className="bg-amber-500 text-amber-950 hover:bg-amber-600"
-            >
-              Simpan dengan talangan
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <TalanganDialog
+        payload={talangan}
+        formPot={formPot}
+        selisih={selisihTalangan}
+        onClose={() => setTalangan(null)}
+        onConfirm={handleTalangan}
+        pending={simpan.isPending}
+      />
 
-      {/* Dialog salurkan */}
-      <AlertDialog open={!!salurTarget} onOpenChange={(open) => !open && setSalurTarget(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Salurkan pot arisan?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Pengeluaran dana Arisan akan dibuat sebesar pot putaran ini.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="flex flex-col gap-1.5 py-2">
-            <Label className="text-[12.5px] font-bold">Tanggal salur</Label>
-            <Input
-              type="date"
-              value={salurTanggal}
-              onChange={(e) => setSalurTanggal(e.target.value)}
-              className="rounded-[11px]"
-            />
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Batal</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleSalurkan}
-              disabled={salurkan.isPending}
-              className="bg-emerald-600 text-white hover:bg-emerald-700"
-            >
-              Salurkan
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <SalurkanDialog
+        target={salurTarget}
+        tanggal={salurTanggal}
+        onTanggalChange={setSalurTanggal}
+        onClose={() => setSalurTarget(null)}
+        onConfirm={handleSalurkan}
+        pending={salurkan.isPending}
+      />
 
-      {/* Dialog hapus */}
-      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Hapus putaran?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Hanya putaran yang belum disalurkan yang bisa dihapus.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Batal</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleHapus}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Hapus
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <HapusPutaranDialog
+        target={deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleHapus}
+      />
     </div>
   );
 }
