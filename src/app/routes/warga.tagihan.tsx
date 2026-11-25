@@ -115,6 +115,19 @@ export default function WargaTagihan() {
         </div>
       ) : (
         <>
+          {tagihan.statusHunian === "Kosong" && (
+            <div className="flex items-start gap-2 rounded-[14px] border border-border/60 bg-muted/40 px-3 py-2.5">
+              <Info
+                className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground"
+                strokeWidth={2.2}
+              />
+              <p className="text-[11.5px] leading-relaxed text-muted-foreground">
+                Rumah {ctx.rumah.no_rumah} sedang kosong. Tagihan di bawah adalah
+                sisa tunggakan dari masa hunian sebelumnya; tidak ada tagihan
+                baru sampai rumah dihuni lagi.
+              </p>
+            </div>
+          )}
           <div className="rounded-[20px] bg-linear-to-br from-primary to-primary/80 p-5 text-primary-foreground shadow-lg shadow-primary/30">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">

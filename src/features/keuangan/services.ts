@@ -4,8 +4,10 @@ import type {
   JimpitanHarian,
   PengeluaranKas,
   GrupPengeluaran,
+  ArisanRonde,
   ArisanPutaran,
   ArisanRekap,
+  StatusHunian,
   TipeKas,
 } from "@/shared/types/database";
 
@@ -418,6 +420,66 @@ export async function fetchSaldoKas(): Promise<SaldoKas> {
 }
 
 // ==================== ARISAN ====================
+
+export type ArisanRondeWithAnggota = ArisanRonde & {
+  arisan_anggota: { rumah_id: string }[];
+};
+
+export async function fetchArisanRondeList() {
+  const { data, error } = await supabase
+    .from("arisan_ronde")
+    .select("*, arisan_anggota(rumah_id)")
+    .order("nomor", { ascending: false });
+  if (error) throw error;
+  return data as ArisanRondeWithAnggota[];
+}
+
+export interface ArisanAnggotaRow {
+  id: string;
+  rumah_id: string;
+  rumah_kk: {
+    no_rumah: string;
+    status_hunian: StatusHunian;
+    is_active: boolean;
+  } | null;
+}
+
+export async function fetchArisanAnggota(rondeId: string) {
+  const { data, error } = await supabase
+    .from("arisan_anggota")
+    .select("id, rumah_id, rumah_kk(no_rumah, status_hunian, is_active)")
+    .eq("ronde_id", rondeId);
+  if (error) throw error;
+  return ((data ?? []) as unknown as ArisanAnggotaRow[]).map((row) => ({
+    ...row,
+    rumah_kk: Array.isArray(row.rumah_kk) ? (row.rumah_kk[0] ?? null) : row.rumah_kk,
+  }));
+}
+
+export interface MulaiArisanRondeInput {
+  tanggal_mulai: string;
+  anggota: string[];
+  catatan: string | null;
+}
+
+export async function mulaiArisanRonde(input: MulaiArisanRondeInput) {
+  const { data, error } = await supabase.rpc("fn_mulai_arisan_ronde", {
+    p_tanggal_mulai: input.tanggal_mulai,
+    p_anggota: input.anggota,
+    p_catatan: input.catatan,
+  });
+  if (error) throw error;
+  return data as ArisanRonde;
+}
+
+export async function tutupArisanRonde(rondeId: string, tanggalSelesai: string) {
+  const { data, error } = await supabase.rpc("fn_tutup_arisan_ronde", {
+    p_ronde_id: rondeId,
+    p_tanggal_selesai: tanggalSelesai,
+  });
+  if (error) throw error;
+  return data as ArisanRonde;
+}
 
 export async function fetchArisanRekap(tahun?: number) {
   let query = supabase

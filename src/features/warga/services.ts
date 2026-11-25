@@ -3,6 +3,7 @@ import type { Role } from "@/features/auth/types";
 import type {
   HubunganKeluarga,
   KasBulanan,
+  RumahHunian,
   RumahKK,
   StatusHunian,
   WargaDetail,
@@ -42,7 +43,6 @@ export type CreateRumahInput = Pick<
   | "status_hunian"
   | "mode_jimpitan"
   | "catatan"
-  | "ikut_arisan"
   | "mulai_kas_ibu"
 >;
 
@@ -76,6 +76,66 @@ export async function deleteRumah(id: string) {
     .update({ is_active: false })
     .eq("id", id);
   if (error) throw error;
+}
+
+// ==================== PERIODE HUNIAN ====================
+
+export interface PeriodeHunian {
+  rumah_id: string;
+  tanggal_mulai: string;
+  tanggal_selesai: string | null;
+  tunggakan_dialihkan: boolean;
+}
+
+export async function fetchPeriodeHunian(): Promise<PeriodeHunian[]> {
+  const { data, error } = await supabase
+    .from("v_rumah_hunian_publik")
+    .select("rumah_id, tanggal_mulai, tanggal_selesai, tunggakan_dialihkan")
+    .order("tanggal_mulai");
+  if (error) throw error;
+  return (data ?? []) as PeriodeHunian[];
+}
+
+export interface KosongkanRumahInput {
+  rumahId: string;
+  tanggalKosong: string;
+  catatan?: string | null;
+}
+
+export async function kosongkanRumah(
+  input: KosongkanRumahInput
+): Promise<RumahHunian> {
+  const { data, error } = await supabase.rpc("fn_kosongkan_rumah", {
+    p_rumah_id: input.rumahId,
+    p_tanggal_kosong: input.tanggalKosong,
+    p_catatan: input.catatan ?? null,
+  });
+  if (error) throw error;
+  return data as RumahHunian;
+}
+
+export interface HuniRumahInput {
+  rumahId: string;
+  tanggalMulai: string;
+  statusHunian: Exclude<StatusHunian, "Kosong">;
+  tunggakanDialihkan?: boolean;
+  mulaiKasIbu?: string | null;
+  catatan?: string | null;
+}
+
+export async function huniRumah(
+  input: HuniRumahInput
+): Promise<RumahHunian> {
+  const { data, error } = await supabase.rpc("fn_huni_rumah", {
+    p_rumah_id: input.rumahId,
+    p_tanggal_mulai: input.tanggalMulai,
+    p_status_hunian: input.statusHunian,
+    p_tunggakan_dialihkan: input.tunggakanDialihkan ?? true,
+    p_mulai_kas_ibu: input.mulaiKasIbu ?? null,
+    p_catatan: input.catatan ?? null,
+  });
+  if (error) throw error;
+  return data as RumahHunian;
 }
 
 export type CreateWargaInput = Pick<

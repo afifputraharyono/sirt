@@ -11,9 +11,11 @@ import { Check, ChevronDown, ChevronRight, ListChecks, Plus } from "lucide-react
 import {
   useKasByMonth, useCreateKas, useDeleteKas, useKasByRange, useUpsertKasBatch,
 } from "@/features/keuangan/hooks";
-import { useRumahList } from "@/features/warga/hooks";
+import { useRumahList, usePeriodeHunian } from "@/features/warga/hooks";
 import { useAuthStore } from "@/features/auth/store";
 import type { RumahKK } from "@/shared/types/database";
+import type { PeriodeHunian } from "@/features/warga/services";
+import { terhuniPada } from "@/shared/lib/hunian";
 import { formatRupiah, formatTanggalPendek } from "@/shared/utils/format";
 import { RT_CONFIG } from "@/shared/lib/constants";
 
@@ -31,6 +33,7 @@ export function IbuArisanTab({ bulan, tahun }: { bulan: number; tahun: number })
   const { data: kasList, isLoading: kasLoading } = useKasByMonth("Ibu", bulan, tahun);
   const { data: arisanList } = useKasByMonth("Arisan", bulan, tahun);
   const { data: rumahList, isLoading: rumahLoading } = useRumahList();
+  const { data: periodeList, isLoading: periodeLoading } = usePeriodeHunian();
   const createKas = useCreateKas();
   const deleteKas = useDeleteKas();
   const upsertBatch = useUpsertKasBatch();
@@ -69,17 +72,33 @@ export function IbuArisanTab({ bulan, tahun }: { bulan: number; tahun: number })
     [arisanList],
   );
 
+  const periodeByRumah = useMemo(() => {
+    const map = new Map<string, PeriodeHunian[]>();
+    for (const p of periodeList ?? []) {
+      const list = map.get(p.rumah_id);
+      if (list) list.push(p);
+      else map.set(p.rumah_id, [p]);
+    }
+    return map;
+  }, [periodeList]);
+
+  // Rumah kosong tidak ditagih; hanya tampil untuk bulan saat masih dihuni.
   const houses = useMemo(
     () => (rumahList ?? [])
-      .filter((r) => r.is_active && r.status_hunian !== "Kosong")
+      .filter((r) => {
+        if (!r.is_active) return false;
+        const periode = periodeByRumah.get(r.id);
+        if (!periode || periode.length === 0) return r.status_hunian !== "Kosong";
+        return terhuniPada(periode, tahun, bulan);
+      })
       .sort((a, b) => a.no_rumah.localeCompare(b.no_rumah, undefined, { numeric: true })),
-    [rumahList],
+    [rumahList, periodeByRumah, tahun, bulan],
   );
   const peserta = houses.filter((r) => r.ikut_arisan);
 
   const kasPaid = houses.filter((r) => kasMap.has(r.id)).length;
   const arisanPaid = peserta.filter((r) => arisanMap.has(r.id)).length;
-  const isLoading = kasLoading || rumahLoading;
+  const isLoading = kasLoading || rumahLoading || periodeLoading;
   const totalKas = kasList?.reduce((s, k) => s + k.jumlah, 0) ?? 0;
   const totalArisan = arisanList?.reduce((s, k) => s + k.jumlah, 0) ?? 0;
   const totalTerkumpul = totalKas + totalArisan;
@@ -274,7 +293,7 @@ export function IbuArisanTab({ bulan, tahun }: { bulan: number; tahun: number })
       {isLoading ? <Skeleton className="h-32 w-full rounded-xl" /> : (
         <div className="flex flex-col gap-2">
           {houses.length === 0 && (
-            <p className="py-6 text-center text-[13px] text-muted-foreground">Belum ada rumah aktif</p>
+            <p className="py-6 text-center text-[13px] text-muted-foreground">Tidak ada rumah yang dihuni bulan ini</p>
           )}
           {houses.map((rumah) => {
             const kas = kasMap.get(rumah.id);

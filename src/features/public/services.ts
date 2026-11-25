@@ -1,5 +1,10 @@
 import { supabase } from "@/shared/lib/supabase";
 import { RT_CONFIG } from "@/shared/lib/constants";
+import {
+  batasBawahTunggakan,
+  terhuniPada,
+  type PeriodeHunianRingkas,
+} from "@/shared/lib/hunian";
 import type { RumahKK, StatusHunian, TipeKas } from "@/shared/types/database";
 
 export interface JadwalRondaPublic {
@@ -198,6 +203,8 @@ export function hitungTagihan(params: {
   }>;
   keanggotaanArisan: KeanggotaanArisan[];
   mulaiKasIbu: string | null;
+  /** Riwayat masa hunian; kosong = data lama, anggap selalu dihuni. */
+  periodeHunian: PeriodeHunianRingkas[];
 }): TagihanRumah {
   const kosong: TagihanRumah = {
     found: true,
@@ -214,7 +221,13 @@ export function hitungTagihan(params: {
     adaTunggakanTahunLalu: false,
     nominalTunggakanTahunLalu: 0,
   };
-  if (params.statusHunian === "Kosong") return kosong;
+  // Rumah kosong tanpa riwayat periode: tidak ada yang bisa ditagih.
+  if (
+    params.statusHunian === "Kosong" &&
+    params.periodeHunian.length === 0
+  ) {
+    return kosong;
+  }
 
   const lunasSet = new Set(
     params.kasRows
@@ -230,6 +243,19 @@ export function hitungTagihan(params: {
   ].filter((k): k is Kewajiban => k !== null);
   if (kewajibanList.length === 0) return { ...kosong, wajibBayar: true };
 
+  // Bulan tanpa penghuni tidak ditagih (Kas Ibu & Arisan berhenti).
+  const periode = params.periodeHunian;
+  const dihuni = (indeks: number) =>
+    periode.length === 0 ||
+    terhuniPada(periode, Math.floor(indeks / 12), (indeks % 12) + 1);
+  // Bila periode terbuka tidak mengalihkan tunggakan, bulan sebelum masa
+  // hunian berjalan tidak ditagih lagi.
+  const batasTunggakan = batasBawahTunggakan(periode);
+  const wajibBayarBulan = (kewajiban: Kewajiban, indeks: number) =>
+    kewajiban.wajib(indeks) &&
+    (batasTunggakan === null || indeks >= batasTunggakan) &&
+    dihuni(indeks);
+
   const tahunSekarang = params.tahun;
   const indeksSekarang = indeksBulan(tahunSekarang, params.bulanSekarang);
   const tahunAwal = Math.floor(
@@ -243,7 +269,8 @@ export function hitungTagihan(params: {
     const akhirTahun = indeksBulan(tahun, bulanAkhir);
 
     const rincian: RincianTagihan[] = [];
-    for (const { tipe, awal, wajib } of kewajibanList) {
+    for (const kewajiban of kewajibanList) {
+      const { tipe, awal } = kewajiban;
       const dari = Math.max(awal, awalTahun);
       const sampai = Math.min(akhirTahun, indeksSekarang);
       if (dari > sampai) continue;
@@ -251,7 +278,7 @@ export function hitungTagihan(params: {
       let bulanWajib = 0;
       let jumlahLunas = 0;
       for (let idx = dari; idx <= sampai; idx++) {
-        if (!wajib(idx)) continue;
+        if (!wajibBayarBulan(kewajiban, idx)) continue;
         bulanWajib++;
         const y = Math.floor(idx / 12);
         const m = (idx % 12) + 1;
@@ -274,7 +301,7 @@ export function hitungTagihan(params: {
     for (let b = 1; b <= bulanAkhir; b++) {
       const indeks = indeksBulan(tahun, b);
       const items = kewajibanList
-        .filter(({ wajib }) => wajib(indeks))
+        .filter((kewajiban) => wajibBayarBulan(kewajiban, indeks))
         .map(({ tipe }) => ({
           tipe,
           lunas: lunasSet.has(`${tipe}-${tahun}-${b}`),
@@ -300,7 +327,7 @@ export function hitungTagihan(params: {
 
   return {
     ...kosong,
-    wajibBayar: true,
+    wajibBayar: tahunList.length > 0,
     rincian: tahunIni?.rincian ?? [],
     detailPerBulan: tahunIni?.detailPerBulan ?? [],
     tahunList,
@@ -378,6 +405,12 @@ export async function fetchTagihanRumah(noRumah: string): Promise<TagihanRumah> 
     });
   }
 
+  const { data: periodeRows, error: periodeError } = await supabase
+    .from("v_rumah_hunian_publik")
+    .select("tanggal_mulai, tanggal_selesai, tunggakan_dialihkan")
+    .eq("rumah_id", rumah.id);
+  if (periodeError) throw periodeError;
+
   return hitungTagihan({
     noRumah: rumah.no_rumah,
     statusHunian: rumah.status_hunian,
@@ -391,5 +424,6 @@ export async function fetchTagihanRumah(noRumah: string): Promise<TagihanRumah> 
     }>,
     keanggotaanArisan,
     mulaiKasIbu: rumah.mulai_kas_ibu ?? null,
+    periodeHunian: (periodeRows ?? []) as PeriodeHunianRingkas[],
   });
 }

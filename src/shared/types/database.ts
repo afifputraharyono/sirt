@@ -74,6 +74,17 @@ export interface RumahKK {
   updated_at: string;
 }
 
+export interface RumahHunian {
+  id: string;
+  rumah_id: string;
+  tanggal_mulai: string;
+  tanggal_selesai: string | null;
+  tunggakan_dialihkan: boolean;
+  catatan: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface WargaDetail {
   id: string;
   rumah_id: string;
@@ -155,6 +166,17 @@ export interface GrupPengeluaran {
   updated_at: string;
 }
 
+export interface ArisanRonde {
+  id: string;
+  nomor: number;
+  tanggal_mulai: string;
+  tanggal_selesai: string | null;
+  catatan: string | null;
+  dicatat_oleh: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface ArisanPutaran {
   id: string;
   bulan: number;
@@ -165,6 +187,8 @@ export interface ArisanPutaran {
   pengeluaran_id: string | null;
   catatan: string | null;
   dicatat_oleh: string;
+  ronde_id: string;
+  urutan: number;
   created_at: string;
   updated_at: string;
 }
@@ -184,6 +208,9 @@ export interface ArisanRekap {
   catatan: string | null;
   created_at: string | null;
   updated_at: string | null;
+  ronde_id: string | null;
+  urutan: number | null;
+  ronde_nomor: number | null;
 }
 
 export interface JadwalRonda {

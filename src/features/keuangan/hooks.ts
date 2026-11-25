@@ -29,6 +29,10 @@ import {
   fetchJimpitanByRange,
   fetchSaldoKas,
   fetchArisanRekap,
+  fetchArisanRondeList,
+  fetchArisanAnggota,
+  mulaiArisanRonde,
+  tutupArisanRonde,
   simpanArisanPutaran,
   salurkanArisanPutaran,
   deleteArisanPutaran,
@@ -37,6 +41,7 @@ import {
   type CreatePengeluaranInput,
   type UpdateJimpitanInput,
   type CreateGrupInput,
+  type MulaiArisanRondeInput,
   type SimpanArisanPutaranInput,
 } from "./services";
 import { toast } from "sonner";
@@ -246,6 +251,47 @@ export function useSaldoKas() {
 }
 
 // ==================== ARISAN ====================
+
+export function useArisanRondeList() {
+  return useQuery({
+    queryKey: queryKeys.arisan.ronde(),
+    queryFn: fetchArisanRondeList,
+  });
+}
+
+export function useArisanAnggota(rondeId: string | null) {
+  return useQuery({
+    queryKey: queryKeys.arisan.anggota(rondeId ?? "none"),
+    queryFn: () => fetchArisanAnggota(rondeId as string),
+    enabled: !!rondeId,
+  });
+}
+
+export function useMulaiArisanRonde() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: MulaiArisanRondeInput) => mulaiArisanRonde(input),
+    onSuccess: (ronde) => {
+      qc.invalidateQueries({ queryKey: queryKeys.kas.all });
+      qc.invalidateQueries({ queryKey: queryKeys.warga.all });
+      toast.success(`Ronde ${ronde.nomor} dimulai`);
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
+
+export function useTutupArisanRonde() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ rondeId, tanggal }: { rondeId: string; tanggal: string }) =>
+      tutupArisanRonde(rondeId, tanggal),
+    onSuccess: (ronde) => {
+      qc.invalidateQueries({ queryKey: queryKeys.kas.all });
+      toast.success(`Ronde ${ronde.nomor} ditutup`);
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
 
 export function useArisanRekap(tahun?: number) {
   return useQuery({

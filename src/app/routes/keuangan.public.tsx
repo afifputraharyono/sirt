@@ -397,7 +397,7 @@ function TagihanTab({
             Periksa kembali nomor rumah atau hubungi pengurus RT.
           </p>
         </div>
-      ) : !data.wajibBayar ? (
+      ) : data.statusHunian === "Kosong" && !data.wajibBayar ? (
         <div className="flex flex-col items-center gap-3 rounded-[20px] border border-dashed border-border/60 py-10 text-center">
           <Home className="h-10 w-10 text-muted-foreground/50" />
           <p className="text-[13.5px] font-medium text-muted-foreground">
@@ -409,6 +409,19 @@ function TagihanTab({
         </div>
       ) : (
         <div className="flex flex-col gap-3">
+          {data.statusHunian === "Kosong" && (
+            <div className="flex items-start gap-2 rounded-[14px] border border-border/60 bg-muted/40 px-3 py-2.5">
+              <Home
+                className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground"
+                strokeWidth={2.2}
+              />
+              <p className="text-[11.5px] leading-relaxed text-muted-foreground">
+                Rumah {data.noRumah} sedang kosong. Tagihan di bawah adalah sisa
+                tunggakan dari masa hunian sebelumnya; tidak ada tagihan baru
+                sampai rumah dihuni lagi.
+              </p>
+            </div>
+          )}
           <div className="rounded-[20px] bg-linear-to-br from-primary to-primary/80 p-5 text-primary-foreground shadow-lg shadow-primary/30">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">

@@ -16,7 +16,7 @@ import { toast } from "sonner";
 import {
   useRumahList, useCreateRumah, useUpdateRumah, useDeleteRumah,
   useCreateWarga, useUpdateWarga, useDeleteWarga, useImportWarga,
-  useBuatAkunWarga,
+  useBuatAkunWarga, useKosongkanRumah, useHuniRumah,
 } from "@/features/warga/hooks";
 import {
   buildWargaImportPreview, CSV_TEMPLATE,
@@ -43,6 +43,7 @@ const HUBUNGAN: HubunganKeluarga[] = [
 const AGAMA: Agama[] = ["Islam", "Kristen", "Katolik", "Hindu", "Buddha", "Konghucu", "Lainnya"];
 const STATUS_KAWIN: StatusPerkawinan[] = ["Belum Kawin", "Kawin", "Cerai Hidup", "Cerai Mati"];
 const SELECT_CLASS = "flex h-10 w-full rounded-[11px] border border-input bg-background px-3 py-2 text-[13.5px]";
+const TODAY = new Date().toISOString().split("T")[0]!;
 
 const HUNIAN_BADGE: Record<string, string> = {
   Tetap: "bg-primary/15 text-primary",
@@ -60,11 +61,17 @@ export default function AdminWarga() {
   const deleteWarga = useDeleteWarga();
   const importWarga = useImportWarga();
   const buatAkun = useBuatAkunWarga();
+  const kosongkanRumah = useKosongkanRumah();
+  const huniRumah = useHuniRumah();
 
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [rumahDrawer, setRumahDrawer] = useState(false);
   const [wargaDrawer, setWargaDrawer] = useState(false);
   const [editRumah, setEditRumah] = useState<RumahWithWarga | null>(null);
+  const [formStatus, setFormStatus] = useState<StatusHunian>("Tetap");
+  const [tanggalKosong, setTanggalKosong] = useState(TODAY);
+  const [tanggalMulaiHunian, setTanggalMulaiHunian] = useState(TODAY);
+  const [tunggakanDialihkan, setTunggakanDialihkan] = useState(true);
   const [editWarga, setEditWarga] = useState<WargaDetail | null>(null);
   const [wargaRumahId, setWargaRumahId] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<{
@@ -197,28 +204,83 @@ export default function AdminWarga() {
       )
   );
 
-  const handleRumahSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const openRumahDrawer = (rumah: RumahWithWarga | null) => {
+    setEditRumah(rumah);
+    setFormStatus(rumah?.status_hunian ?? "Tetap");
+    setTanggalKosong(TODAY);
+    setTanggalMulaiHunian(
+      rumah?.status_hunian === "Kosong" ? TODAY : (rumah?.mulai_kas_ibu ?? TODAY)
+    );
+    setTunggakanDialihkan(true);
+    setRumahDrawer(true);
+  };
+
+  const jadiKosong =
+    !!editRumah &&
+    editRumah.status_hunian !== "Kosong" &&
+    formStatus === "Kosong";
+  const jadiDihuni =
+    formStatus !== "Kosong" &&
+    (!editRumah || editRumah.status_hunian === "Kosong");
+
+  const handleRumahSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
-    const payload = {
+    const dasar = {
       no_rumah: fd.get("no_rumah") as string,
       no_kk: (fd.get("no_kk") as string) || null,
       alamat_lengkap: (fd.get("alamat_lengkap") as string) || null,
-      status_hunian: fd.get("status_hunian") as StatusHunian,
       mode_jimpitan: fd.get("mode_jimpitan") as ModeJimpitan,
       catatan: (fd.get("catatan") as string) || null,
-      ikut_arisan: fd.get("ikut_arisan") === "on",
       mulai_kas_ibu: (fd.get("mulai_kas_ibu") as string) || null,
     };
-    if (editRumah) {
-      updateRumah.mutate(
-        { id: editRumah.id, ...payload },
-        { onSuccess: () => setRumahDrawer(false) }
-      );
-    } else {
-      createRumah.mutate(payload, {
-        onSuccess: () => setRumahDrawer(false),
-      });
+
+    try {
+      if (!editRumah) {
+        // Dibuat kosong dulu agar tidak ada rumah dihuni tanpa periode.
+        const rumah = await createRumah.mutateAsync({
+          ...dasar,
+          status_hunian: "Kosong",
+        });
+        if (formStatus !== "Kosong") {
+          await huniRumah.mutateAsync({
+            rumahId: rumah.id,
+            tanggalMulai: tanggalMulaiHunian,
+            statusHunian: formStatus,
+            mulaiKasIbu: dasar.mulai_kas_ibu,
+          });
+        }
+      } else if (formStatus === editRumah.status_hunian) {
+        await updateRumah.mutateAsync({
+          id: editRumah.id,
+          ...dasar,
+          status_hunian: formStatus,
+        });
+      } else if (formStatus === "Kosong") {
+        await updateRumah.mutateAsync({ id: editRumah.id, ...dasar });
+        await kosongkanRumah.mutateAsync({
+          rumahId: editRumah.id,
+          tanggalKosong,
+        });
+      } else if (editRumah.status_hunian === "Kosong") {
+        await updateRumah.mutateAsync({ id: editRumah.id, ...dasar });
+        await huniRumah.mutateAsync({
+          rumahId: editRumah.id,
+          tanggalMulai: tanggalMulaiHunian,
+          statusHunian: formStatus,
+          tunggakanDialihkan,
+          mulaiKasIbu: dasar.mulai_kas_ibu,
+        });
+      } else {
+        await updateRumah.mutateAsync({
+          id: editRumah.id,
+          ...dasar,
+          status_hunian: formStatus,
+        });
+      }
+      setRumahDrawer(false);
+    } catch {
+      // toast error sudah ditangani mutation; drawer tetap terbuka
     }
   };
 
@@ -315,7 +377,7 @@ export default function AdminWarga() {
               Impor
             </button>
             <button
-              onClick={() => { setEditRumah(null); setRumahDrawer(true); }}
+              onClick={() => openRumahDrawer(null)}
               className="flex items-center gap-1.5 rounded-xl bg-primary px-3.5 py-2.5 text-[13px] font-bold text-primary-foreground transition-transform active:scale-[0.96]"
             >
               <Plus className="h-4 w-4" strokeWidth={2.5} />
@@ -366,7 +428,7 @@ export default function AdminWarga() {
                 isOpen={isOpen}
                 activeWarga={activeWarga}
                 onToggle={() => toggleRow(rumah.id)}
-                onEditRumah={() => { setEditRumah(rumah); setRumahDrawer(true); }}
+                onEditRumah={() => openRumahDrawer(rumah)}
                 onDeleteRumah={() => setDeleteTarget({ type: "rumah", id: rumah.id })}
                 onAddWarga={() => { setEditWarga(null); setWargaRumahId(rumah.id); setBuatAkunManual(false); setWargaDrawer(true); }}
                 onEditWarga={(w) => { setEditWarga(w); setWargaRumahId(rumah.id); setWargaDrawer(true); }}
@@ -390,28 +452,79 @@ export default function AdminWarga() {
             <Input name="alamat_lengkap" defaultValue={editRumah?.alamat_lengkap ?? ""} className="rounded-[11px]" />
           </FormField>
           <FormField label="Status Hunian *">
-            <select name="status_hunian" defaultValue={editRumah?.status_hunian ?? "Tetap"} className={SELECT_CLASS}>
+            <select
+              value={formStatus}
+              onChange={(e) => setFormStatus(e.target.value as StatusHunian)}
+              className={SELECT_CLASS}
+            >
               {STATUS_HUNIAN.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
+            {jadiKosong && (
+              <p className="text-[11px] text-muted-foreground">
+                Bulan tanggal kosong tidak ditagih; tagihan berhenti di bulan
+                sebelumnya.
+              </p>
+            )}
+            {jadiDihuni && (
+              <p className="text-[11px] text-muted-foreground">
+                Bulan mulai hunian tetap ditagih penuh.
+              </p>
+            )}
           </FormField>
+          {jadiKosong && (
+            <FormField label="Tanggal Kosong *">
+              <Input
+                type="date"
+                required
+                value={tanggalKosong}
+                onChange={(e) => setTanggalKosong(e.target.value)}
+                className="rounded-[11px]"
+              />
+            </FormField>
+          )}
+          {jadiDihuni && (
+            <FormField label="Tanggal Mulai Hunian *">
+              <Input
+                type="date"
+                required
+                value={tanggalMulaiHunian}
+                onChange={(e) => setTanggalMulaiHunian(e.target.value)}
+                className="rounded-[11px]"
+              />
+            </FormField>
+          )}
+          {jadiDihuni && editRumah && (
+            <label className="flex items-start gap-2.5 rounded-[11px] border border-border/60 px-3 py-2.5">
+              <input
+                type="checkbox"
+                checked={tunggakanDialihkan}
+                onChange={(e) => setTunggakanDialihkan(e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0 rounded border-border accent-primary"
+              />
+              <div>
+                <div className="text-[12.5px] font-bold">Tunggakan lama dialihkan</div>
+                <div className="text-[11px] leading-relaxed text-muted-foreground">
+                  Jika dicentang, tunggakan dari masa hunian sebelumnya tetap
+                  ditagihkan ke rumah ini. Jika tidak, tagihan dimulai dari bulan
+                  mulai hunian.
+                </div>
+              </div>
+            </label>
+          )}
           <FormField label="Mode Jimpitan *">
             <select name="mode_jimpitan" defaultValue={editRumah?.mode_jimpitan ?? "Harian"} className={SELECT_CLASS}>
               {MODE_JIMPITAN.map((m) => <option key={m} value={m}>{m}</option>)}
             </select>
           </FormField>
           <FormField label="Status Arisan">
-            <label className="flex items-center gap-2.5 rounded-[11px] border border-border/60 px-3 py-2.5">
-              <input
-                type="checkbox"
-                name="ikut_arisan"
-                defaultChecked={editRumah?.ikut_arisan ?? false}
-                className="h-4 w-4 rounded border-border accent-primary"
-              />
-              <div>
-                <div className="text-[12.5px] font-bold">Ikut Arisan</div>
-                <div className="text-[11px] text-muted-foreground">Peserta arisan bergulir</div>
+            <div className="rounded-[11px] border border-border/60 px-3 py-2.5">
+              <div className="text-[12.5px] font-bold">
+                {editRumah?.ikut_arisan ? "Peserta arisan ronde berjalan" : "Bukan peserta arisan"}
               </div>
-            </label>
+              <div className="text-[11px] text-muted-foreground">
+                Keanggotaan arisan diatur lewat Keuangan → Putaran (Mulai ronde).
+              </div>
+            </div>
           </FormField>
           <FormField label="Mulai Kas Ibu">
             <Input
@@ -421,13 +534,22 @@ export default function AdminWarga() {
               className="rounded-[11px]"
             />
             <p className="text-[11px] text-muted-foreground">
-              Kosongkan bila rumah sudah ditempati sebelum kas berjalan (wajib sejak Agustus).
+              {jadiDihuni
+                ? "Kosongkan untuk otomatis memakai awal bulan tanggal mulai hunian."
+                : "Kosongkan bila rumah sudah ditempati sebelum kas berjalan (wajib sejak Agustus)."}
             </p>
           </FormField>
           <FormField label="Catatan">
             <Input name="catatan" defaultValue={editRumah?.catatan ?? ""} className="rounded-[11px]" />
           </FormField>
-          <PrimaryButton pending={createRumah.isPending || updateRumah.isPending} />
+          <PrimaryButton
+            pending={
+              createRumah.isPending ||
+              updateRumah.isPending ||
+              kosongkanRumah.isPending ||
+              huniRumah.isPending
+            }
+          />
         </form>
       </BottomDrawer>
 

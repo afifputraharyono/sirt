@@ -12,6 +12,7 @@ export const queryKeys = {
     myKas: (rumahId: string, tahun: number) =>
       [...queryKeys.warga.all, "me", "kas", rumahId, tahun] as const,
     accounts: () => [...queryKeys.warga.all, "accounts"] as const,
+    hunian: () => [...queryKeys.warga.all, "hunian"] as const,
   },
   kas: {
     all: ["kas"] as const,
@@ -26,6 +27,9 @@ export const queryKeys = {
     all: ["kas", "arisan"] as const,
     rekap: (tahun?: number) =>
       ["kas", "arisan", "rekap", tahun ?? "all"] as const,
+    ronde: () => ["kas", "arisan", "ronde"] as const,
+    anggota: (rondeId: string) =>
+      ["kas", "arisan", "anggota", rondeId] as const,
   },
   jimpitan: {
     all: ["jimpitan"] as const,

@@ -17,10 +17,15 @@ import {
   updateAkunWarga,
   buatAkunWarga,
   ubahPasswordSaya,
+  fetchPeriodeHunian,
+  kosongkanRumah,
+  huniRumah,
   type AkunWargaUpdate,
   type BuatAkunItem,
   type CreateRumahInput,
   type CreateWargaInput,
+  type HuniRumahInput,
+  type KosongkanRumahInput,
 } from "./services";
 import { useAuthStore } from "@/features/auth/store";
 import { toast } from "sonner";
@@ -72,6 +77,43 @@ export function useDeleteRumah() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.warga.all });
       toast.success("Rumah berhasil dihapus");
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
+
+export function usePeriodeHunian() {
+  return useQuery({
+    queryKey: queryKeys.warga.hunian(),
+    queryFn: fetchPeriodeHunian,
+  });
+}
+
+function invalidateHunian(qc: ReturnType<typeof useQueryClient>) {
+  qc.invalidateQueries({ queryKey: queryKeys.warga.all });
+  qc.invalidateQueries({ queryKey: queryKeys.kas.all });
+  qc.invalidateQueries({ queryKey: queryKeys.public.all });
+}
+
+export function useKosongkanRumah() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: KosongkanRumahInput) => kosongkanRumah(input),
+    onSuccess: () => {
+      invalidateHunian(qc);
+      toast.success("Rumah ditandai kosong");
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
+
+export function useHuniRumah() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: HuniRumahInput) => huniRumah(input),
+    onSuccess: () => {
+      invalidateHunian(qc);
+      toast.success("Hunian rumah tercatat");
     },
     onError: (err: Error) => toast.error(err.message),
   });
