@@ -907,12 +907,30 @@ interface UIStore {
 }
 
 // useOfflineStore — Offline Queue (PWA)
+type OfflineActionStatus = "pending" | "syncing" | "error";
+
+interface OfflineAction<K extends MutationKey = MutationKey> {
+  id: string;
+  mutationKey: K;
+  variables: MutationInput<K>;
+  queryKeyToInvalidate: readonly unknown[];
+  timestamp: number;
+  status: OfflineActionStatus;
+  errorMessage?: string;
+}
+
 interface OfflineStore {
   pendingActions: OfflineAction[];
-  isOnline: boolean;
-  addAction: (action: OfflineAction) => void;
+  isSyncing: boolean;
+  addAction: <K extends MutationKey>(
+    action: Omit<OfflineAction<K>, "id" | "timestamp" | "status">
+  ) => void;
+  removeAction: (id: string) => void;
+  updateActionVariables: <K extends MutationKey>(
+    mutationKey: K,
+    updater: (variables: MutationInput<K>) => MutationInput<K>
+  ) => void;
   syncAll: () => Promise<void>;
-  clearSynced: () => void;
 }
 ```
 
@@ -1210,13 +1228,16 @@ Tombol: [Batal] [Hapus] (merah)
 Alur input jimpitan saat offline:
 1. Petugas buka app (dari cache / installed PWA)
 2. Input nominal jimpitan per rumah
-3. Data disimpan ke IndexedDB via useOfflineStore
-4. UI menampilkan badge "X data belum tersinkronkan"
-5. Saat online terdeteksi (navigator.onLine + fetch check):
-   a. Background sync mengirim data ke Supabase
-   b. Jika ada konflik (sudah diinput orang lain), tampilkan notifikasi
-   c. Clear queue setelah berhasil
-6. Toast: "5 data jimpitan berhasil disinkronkan"
+3. Mutation mendeteksi offline (useOfflineMutation) dan menyimpan aksi ke
+   useOfflineStore (persist IndexedDB, key "sirt-offline-queue")
+4. OfflineIndicator menampilkan badge "N pending" di samping banner offline
+5. Saat event "online" terdeteksi:
+   a. App memanggil syncAll() otomatis; tombol "Sinkronkan N data" tetap
+      tersedia untuk sinkronisasi manual
+   b. Setiap aksi dijalankan lewat mutationRegistry; kegagalan (mis. konflik)
+      ditandai status "error" dan dipertahankan di antrian
+   c. Aksi yang sukses dihapus dari antrian, lalu query terkait di-invalidasi
+6. Toast: "5 data berhasil disinkronkan" atau "1 data gagal disinkronkan"
 ```
 
 ### 10.3. Manifest (PWA)

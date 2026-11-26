@@ -665,10 +665,10 @@ export async function simpanArisanPutaran(input: SimpanArisanPutaranInput) {
     p_tahun: input.tahun,
     p_pemenang_rumah_id: input.pemenang_rumah_id,
     p_nominal: input.nominal,
-    p_tanggal_undi: input.tanggal_undi,
-    p_catatan: input.catatan,
+    p_tanggal_undi: input.tanggal_undi ?? undefined,
+    p_catatan: input.catatan ?? undefined,
     p_salurkan: input.salurkan,
-    p_tanggal_salur: input.tanggal_salur,
+    p_tanggal_salur: input.tanggal_salur ?? undefined,
   });
   if (error) throw error;
   return data as ArisanPutaran;
